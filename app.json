@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "rotina.",
+    "slug": "rotina",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "rotina",
+    "userInterfaceStyle": "dark",
+    "web": {
+      "output": "server"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
