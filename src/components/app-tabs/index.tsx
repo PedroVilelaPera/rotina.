@@ -1,5 +1,9 @@
+import React from 'react';
 import { NativeTabs } from 'expo-router/native-tabs';
+
 import { Colors } from '@/constants/theme';
+
+import { styles } from './styles';
 
 export default function AppTabs() {
   const colors = Colors;
@@ -8,7 +12,7 @@ export default function AppTabs() {
     <NativeTabs
       backgroundColor={colors.background}
       indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      labelStyle={{ selected: styles.labelSelected }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Rotina</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
