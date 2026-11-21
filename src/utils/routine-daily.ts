@@ -1,4 +1,5 @@
-import type { DayOfWeek, LocalDateString, RoutineItem } from '../types/routine';
+import type { DayOfWeek, LocalDateString, LocalTimeString, RoutineItem } from '../types/routine';
+import { isValidTimeString } from './routine-validation';
 
 /**
  * Retorna a data local atual no formato estrito YYYY-MM-DD [Padroes.NF001].
@@ -193,4 +194,87 @@ export function calculateDailyProgress(
     progressRatio,
     isAllCompleted,
   };
+}
+
+const DAY_ABBREVIATIONS: Record<DayOfWeek, string> = {
+  0: 'Dom',
+  1: 'Seg',
+  2: 'Ter',
+  3: 'Qua',
+  4: 'Qui',
+  5: 'Sex',
+  6: 'Sáb',
+};
+
+/**
+ * Ajusta o horário em incrementos ou decrementos de 15 minutos com wrap limpo entre 00:00 e 23:45 [IF04, RF004].
+ * Exemplo: 00:00 - 15m => 23:45 | 23:45 + 15m => 00:00.
+ */
+export function adjustTimeBy15Minutes(
+  currentTime: string | null | undefined,
+  delta: 15 | -15,
+  fallbackTime: LocalTimeString = '08:00'
+): LocalTimeString {
+  let totalMinutes: number;
+
+  if (!currentTime || !isValidTimeString(currentTime)) {
+    const [fH, fM] = fallbackTime.split(':').map(Number);
+    totalMinutes = fH * 60 + fM;
+  } else {
+    const [h, m] = currentTime.split(':').map(Number);
+    totalMinutes = h * 60 + m;
+  }
+
+  const nextMinutes = ((totalMinutes + delta) % 1440 + 1440) % 1440;
+  const nextH = Math.floor(nextMinutes / 60);
+  const nextM = nextMinutes % 60;
+
+  return `${String(nextH).padStart(2, '0')}:${String(nextM).padStart(2, '0')}` as LocalTimeString;
+}
+
+/**
+ * Formata o badge legível de recorrência para a interface de detalhes [IF04].
+ */
+export function formatRecurrenceBadge(item: RoutineItem): string {
+  if (item.type === 'task') {
+    return 'Tarefa do dia';
+  }
+
+  if (!item.recurrence) {
+    return 'Hábito';
+  }
+
+  if (item.recurrence.kind === 'daily') {
+    return 'Diário';
+  }
+
+  const days = item.recurrence.daysOfWeek;
+  if (!days || days.length === 0) {
+    return 'Hábito semanal';
+  }
+
+  if (days.length === 7) {
+    return 'Diário';
+  }
+
+  const sortedDays = [...days].sort((a, b) => a - b);
+
+  // Segunda a Sexta [1, 2, 3, 4, 5]
+  if (
+    sortedDays.length === 5 &&
+    sortedDays[0] === 1 &&
+    sortedDays[1] === 2 &&
+    sortedDays[2] === 3 &&
+    sortedDays[3] === 4 &&
+    sortedDays[4] === 5
+  ) {
+    return 'Seg a Sex';
+  }
+
+  // Fim de semana [0, 6]
+  if (sortedDays.length === 2 && sortedDays[0] === 0 && sortedDays[1] === 6) {
+    return 'Fim de semana';
+  }
+
+  return sortedDays.map((d) => DAY_ABBREVIATIONS[d]).join(', ');
 }

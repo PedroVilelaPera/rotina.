@@ -53,6 +53,13 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: Colors.background },
             }}
           />
+          <Stack.Screen
+            name="item-details"
+            options={{
+              animation: 'slide_from_right',
+              contentStyle: { backgroundColor: Colors.background },
+            }}
+          />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
