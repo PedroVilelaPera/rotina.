@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getRoutineRepository } from '../services/routine-service';
 import type { IRoutineRepository, RoutineItem } from '../types/routine';
@@ -26,6 +26,12 @@ export function useRoutineDaily(options?: UseRoutineDailyOptions) {
 
   const [allItems, setAllItems] = useState<RoutineItem[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const completedIdsRef = useRef<Set<string>>(completedIds);
+
+  useEffect(() => {
+    completedIdsRef.current = completedIds;
+  }, [completedIds]);
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -48,8 +54,10 @@ export function useRoutineDaily(options?: UseRoutineDailyOptions) {
         ]);
 
         if (isMounted) {
+          const initialSet = new Set(completions.map((c) => c.itemId));
           setAllItems(items);
-          setCompletedIds(new Set(completions.map((c) => c.itemId)));
+          completedIdsRef.current = initialSet;
+          setCompletedIds(initialSet);
           setErrorMessage(null);
         }
       } catch (err) {
@@ -79,8 +87,10 @@ export function useRoutineDaily(options?: UseRoutineDailyOptions) {
         repository.listItems(userId, { onlyActive: true }),
         repository.listCompletionsForDate(userId, todayDate),
       ]);
+      const refreshedSet = new Set(completions.map((c) => c.itemId));
       setAllItems(items);
-      setCompletedIds(new Set(completions.map((c) => c.itemId)));
+      completedIdsRef.current = refreshedSet;
+      setCompletedIds(refreshedSet);
       setErrorMessage(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Falha ao atualizar rotina.';
@@ -100,21 +110,20 @@ export function useRoutineDaily(options?: UseRoutineDailyOptions) {
     return calculateDailyProgress(dailyItems, completedIds);
   }, [dailyItems, completedIds]);
 
-  // Alternância otimista com resposta visual < 200ms [Desempenho.NF001, Gestao da Rotina.RF005]
+  // Alternância otimista com resposta visual imediata (< 200ms) [Desempenho.NF001, Gestao da Rotina.RF005]
   const toggleItem = useCallback(
     async (item: RoutineItem) => {
-      const wasCompleted = completedIds.has(item.id);
+      // Lê e sincroniza atomicamente com o ref para blindagem contra race conditions
+      const wasCompleted = completedIdsRef.current.has(item.id);
 
-      // Atualização otimista imediata na UI
-      setCompletedIds((prev) => {
-        const next = new Set(prev);
-        if (wasCompleted) {
-          next.delete(item.id);
-        } else {
-          next.add(item.id);
-        }
-        return next;
-      });
+      const nextSet = new Set(completedIdsRef.current);
+      if (wasCompleted) {
+        nextSet.delete(item.id);
+      } else {
+        nextSet.add(item.id);
+      }
+      completedIdsRef.current = nextSet;
+      setCompletedIds(nextSet);
 
       try {
         await repository.toggleCompletion(
@@ -128,21 +137,20 @@ export function useRoutineDaily(options?: UseRoutineDailyOptions) {
         );
       } catch (err) {
         // Rollback do estado otimista caso ocorra erro
-        setCompletedIds((prev) => {
-          const rollback = new Set(prev);
-          if (wasCompleted) {
-            rollback.add(item.id);
-          } else {
-            rollback.delete(item.id);
-          }
-          return rollback;
-        });
+        const rollbackSet = new Set(completedIdsRef.current);
+        if (wasCompleted) {
+          rollbackSet.add(item.id);
+        } else {
+          rollbackSet.delete(item.id);
+        }
+        completedIdsRef.current = rollbackSet;
+        setCompletedIds(rollbackSet);
 
         const msg = err instanceof Error ? err.message : 'Erro ao alternar conclusão.';
         setErrorMessage(msg);
       }
     },
-    [completedIds, repository, userId, todayDate]
+    [repository, userId, todayDate]
   );
 
   return {
