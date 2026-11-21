@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, Vibration, View } from 'react-na
 import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 
 import { Colors } from '../../constants/theme';
 import type { RoutineItem } from '../../types/routine';
@@ -12,6 +13,34 @@ export interface RoutineItemCardProps {
   isCompleted: boolean;
   onToggle: (item: RoutineItem) => void;
   onPressDetails?: (item: RoutineItem) => void;
+}
+
+interface SwipeActionProps {
+  isCompleted: boolean;
+  side: 'left' | 'right';
+  progress: SharedValue<number>;
+}
+
+function SwipeAction({ isCompleted, side, progress }: SwipeActionProps) {
+  // Oculta a camada de fundo quando o card estiver fechado em repouso (evita vazamento em bordas arredondadas)
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value > 0.05 ? 1 : 0,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.swipeAction,
+        side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight,
+        isCompleted ? styles.swipeActionUndo : styles.swipeActionComplete,
+        animatedStyle,
+      ]}>
+      <Text style={styles.swipeActionIcon}>{isCompleted ? '↺' : '✓'}</Text>
+      <Text style={styles.swipeActionText}>
+        {isCompleted ? 'Desfazer' : 'Concluir'}
+      </Text>
+    </Animated.View>
+  );
 }
 
 export function RoutineItemCard({
@@ -39,33 +68,22 @@ export function RoutineItemCard({
     onToggle(item);
   };
 
-  const renderSwipeAction = (side: 'left' | 'right') => {
-    return (
-      <View
-        style={[
-          styles.swipeAction,
-          side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight,
-          isCompleted ? styles.swipeActionUndo : styles.swipeActionComplete,
-        ]}>
-        <Text style={styles.swipeActionIcon}>{isCompleted ? '↺' : '✓'}</Text>
-        <Text style={styles.swipeActionText}>
-          {isCompleted ? 'Desfazer' : 'Concluir'}
-        </Text>
-      </View>
-    );
-  };
-
   return (
     <ReanimatedSwipeable
       ref={swipeableRef}
       containerStyle={styles.swipeableContainer}
+      childrenContainerStyle={styles.childrenContainer}
       friction={2}
       leftThreshold={40}
       rightThreshold={40}
       overshootLeft={false}
       overshootRight={false}
-      renderLeftActions={() => renderSwipeAction('left')}
-      renderRightActions={() => renderSwipeAction('right')}
+      renderLeftActions={(progress) => (
+        <SwipeAction isCompleted={isCompleted} side="left" progress={progress} />
+      )}
+      renderRightActions={(progress) => (
+        <SwipeAction isCompleted={isCompleted} side="right" progress={progress} />
+      )}
       onSwipeableOpen={handleSwipeTrigger}>
       <Pressable
         accessibilityRole="button"
@@ -137,6 +155,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 10,
     borderRadius: 14,
+    backgroundColor: Colors.backgroundElement,
+    overflow: 'hidden',
+  },
+  childrenContainer: {
+    borderRadius: 14,
+    backgroundColor: Colors.backgroundElement,
     overflow: 'hidden',
   },
   swipeAction: {
@@ -179,6 +203,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 14,
     paddingHorizontal: 16,
+    overflow: 'hidden',
   },
   cardCompleted: {
     opacity: 0.75,
@@ -274,4 +299,5 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
+
 
