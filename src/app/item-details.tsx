@@ -41,12 +41,13 @@ export default function ItemDetailsScreen() {
   const repository = getRoutineRepository();
   const userId = 'current-user';
   const todayDate = getTodayLocalDateString();
-  const { syncHabitReminder } = useReminderSync();
+  const { syncHabitReminder, cancelHabitReminder } = useReminderSync();
 
   const [item, setItem] = useState<RoutineItem | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(Boolean(itemId));
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isToggling, setIsToggling] = useState<boolean>(false);
+  const [isArchiving, setIsArchiving] = useState<boolean>(false);
   const [isCompletedToday, setIsCompletedToday] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(
     itemId ? null : 'Identificador do item não informado.'
@@ -209,6 +210,71 @@ export default function ItemDetailsScreen() {
     }
   };
 
+  // Exclusão lógica (arquivamento) preservando histórico de conquistas [RF006]
+  const handleArchive = async () => {
+    if (!item || !itemId || isArchiving) return;
+
+    setIsArchiving(true);
+    setErrorMessage(null);
+
+    try {
+      // 1. Atualiza isActive = false no Firestore mantendo intactos os documentos em completions [RF006]
+      await repository.archiveItem(userId, itemId);
+
+      // 2. Cancela notificações locais do item se for hábito (integração com Frente 3) [RF006]
+      if (item.type === 'habit') {
+        try {
+          await cancelHabitReminder(itemId);
+        } catch {
+          // Falha em notificação não bloqueia a exclusão lógica
+        }
+      }
+
+      // 3. Retorna à IF02
+      router.back();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha ao excluir item da rotina.';
+      setErrorMessage(msg);
+      setIsArchiving(false);
+      Alert.alert('Erro', msg);
+    }
+  };
+
+  // Diálogo de confirmação antes de arquivar [RF006, IF04]
+  const handleConfirmArchive = () => {
+    if (isArchiving || !item) return;
+
+    if (Platform.OS === 'web') {
+      const confirmed =
+        typeof window !== 'undefined'
+          ? window.confirm(
+              'Tem certeza de que deseja remover este item da sua rotina? Seu histórico de conquistas continuará salvo.'
+            )
+          : true;
+      if (confirmed) {
+        void handleArchive();
+      }
+    } else {
+      Alert.alert(
+        'Excluir da rotina',
+        'Tem certeza de que deseja remover este item da sua rotina? Seu histórico de conquistas continuará salvo.',
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+          },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: () => {
+              void handleArchive();
+            },
+          },
+        ]
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
@@ -297,12 +363,12 @@ export default function ItemDetailsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Salvar ajustes do item"
-            disabled={isSaving}
+            disabled={isSaving || isArchiving}
             android_ripple={{ color: Colors.backgroundSelected, borderless: false }}
             style={({ pressed }) => [
               styles.saveButton,
               pressed && styles.saveButtonPressed,
-              isSaving && styles.saveButtonDisabled,
+              (isSaving || isArchiving) && styles.saveButtonDisabled,
             ]}
             onPress={handleSave}>
             {isSaving ? (
@@ -315,14 +381,14 @@ export default function ItemDetailsScreen() {
             )}
           </Pressable>
 
-          {/* Barra Inferior com Concluir Hoje [IF04, RF005] */}
+          {/* Barra Inferior com Concluir Hoje e Excluir da rotina [IF04, RF005, RF006] */}
           <View style={styles.bottomActionsBar}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
                 isCompletedToday ? 'Desfazer conclusão de hoje' : 'Concluir hoje'
               }
-              disabled={isToggling}
+              disabled={isToggling || isArchiving}
               style={({ pressed }) => [
                 styles.completeTodayButton,
                 isCompletedToday && styles.completeTodayButtonActive,
@@ -336,6 +402,24 @@ export default function ItemDetailsScreen() {
                 ]}>
                 {isCompletedToday ? 'Concluído hoje ✓' : 'Concluir hoje'}
               </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Excluir item da rotina"
+              disabled={isArchiving || isToggling || isSaving}
+              android_ripple={{ color: Colors.backgroundSelected, borderless: false }}
+              style={({ pressed }) => [
+                styles.archiveButton,
+                pressed && styles.archiveButtonPressed,
+                isArchiving && styles.archiveButtonDisabled,
+              ]}
+              onPress={handleConfirmArchive}>
+              {isArchiving ? (
+                <ActivityIndicator size="small" color={Colors.danger} />
+              ) : (
+                <Text style={styles.archiveButtonText}>Excluir da rotina</Text>
+              )}
             </Pressable>
           </View>
         </ScrollView>
@@ -503,5 +587,28 @@ const styles = StyleSheet.create({
   },
   completeTodayTextActive: {
     color: Colors.accent,
+  },
+  archiveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: Colors.backgroundElement,
+    borderRadius: 10,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archiveButtonPressed: {
+    backgroundColor: Colors.backgroundSelected,
+    borderColor: Colors.danger,
+    transform: [{ scale: 0.98 }],
+  },
+  archiveButtonDisabled: {
+    opacity: 0.6,
+  },
+  archiveButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.danger,
   },
 });
