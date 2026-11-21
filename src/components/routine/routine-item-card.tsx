@@ -14,6 +14,7 @@ export interface RoutineItemCardProps {
   isCompleted: boolean;
   onToggle: (item: RoutineItem) => void;
   onPressDetails?: (item: RoutineItem) => void;
+  onPressEdit?: (item: RoutineItem) => void;
 }
 
 interface SwipeActionProps {
@@ -49,6 +50,7 @@ export function RoutineItemCard({
   isCompleted,
   onToggle,
   onPressDetails,
+  onPressEdit,
 }: RoutineItemCardProps) {
   const swipeableRef = useRef<SwipeableMethods | null>(null);
 
@@ -107,8 +109,13 @@ export function RoutineItemCard({
           {isCompleted && <Text style={styles.checkmarkIcon}>✓</Text>}
         </Pressable>
 
-        {/* Conteúdo Central */}
-        <View style={styles.content}>
+        {/* Conteúdo Central: Toque no corpo do card abre IF04 [Critérios de Aceite] */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Ver detalhes de ${item.title}`}
+          android_ripple={{ color: Colors.backgroundSelected, borderless: false }}
+          style={styles.content}
+          onPress={() => onPressDetails?.(item)}>
           <Text
             numberOfLines={2}
             style={[
@@ -142,9 +149,9 @@ export function RoutineItemCard({
               </View>
             )}
           </View>
-        </View>
+        </Pressable>
 
-        {/* Botão de Engrenagem Dedicado para Edição (espelha dimensões e toque da checkbox) */}
+        {/* Botão de Engrenagem Dedicado para Edição IF03 [Critérios de Aceite] */}
         <Pressable
           hitSlop={12}
           accessibilityRole="button"
@@ -154,7 +161,7 @@ export function RoutineItemCard({
             styles.editButton,
             pressed && styles.editButtonPressed,
           ]}
-          onPress={() => onPressDetails?.(item)}>
+          onPress={() => (onPressEdit ? onPressEdit(item) : onPressDetails?.(item))}>
           <SymbolView
             name={{
               ios: 'gearshape',

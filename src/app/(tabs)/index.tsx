@@ -53,6 +53,10 @@ export default function RoutineScreen() {
   };
 
   const handlePressDetails = (item: RoutineItem) => {
+    router.push({ pathname: '/item-details', params: { id: item.id } });
+  };
+
+  const handlePressEdit = (item: RoutineItem) => {
     router.push({ pathname: '/item-form', params: { id: item.id } });
   };
 
@@ -118,6 +122,7 @@ export default function RoutineScreen() {
                 isCompleted={completedIds.has(item.id)}
                 onToggle={toggleItem}
                 onPressDetails={handlePressDetails}
+                onPressEdit={handlePressEdit}
               />
             ))}
           </View>

@@ -24,6 +24,13 @@ export function ItemFormHeader({
 }: ItemFormHeaderProps) {
   return (
     <View style={styles.container}>
+      {/* Título Centralizado em Absoluto para blindagem contra larguras assimétricas dos botões laterais */}
+      <View style={styles.titleContainer} pointerEvents="none">
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Fechar formulário"
@@ -36,10 +43,6 @@ export function ItemFormHeader({
         onPress={onClose}>
         <Text style={styles.closeIcon}>✕</Text>
       </Pressable>
-
-      <Text style={styles.title} numberOfLines={1}>
-        {title}
-      </Text>
 
       <Pressable
         accessibilityRole="button"
@@ -65,6 +68,7 @@ export function ItemFormHeader({
 
 const styles = StyleSheet.create({
   container: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -73,6 +77,17 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    minHeight: 64,
+  },
+  titleContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 12,
+    bottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 80,
   },
   closeButton: {
     width: 36,
@@ -81,6 +96,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.backgroundElement,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
   },
   buttonPressed: {
     opacity: 0.7,
@@ -94,6 +110,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: Colors.text,
+    textAlign: 'center',
   },
   saveButton: {
     paddingHorizontal: 16,
@@ -103,6 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 70,
+    zIndex: 1,
   },
   saveButtonDisabled: {
     opacity: 0.6,

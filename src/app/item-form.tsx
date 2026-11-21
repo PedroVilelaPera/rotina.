@@ -290,7 +290,7 @@ export default function ItemFormScreen() {
                   onChangeText={setNote}
                   maxLength={280}
                   multiline
-                  numberOfLines={3}
+                  numberOfLines={4}
                   textAlignVertical="top"
                   style={[
                     styles.textArea,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: Colors.text,
-    minHeight: 88,
+    minHeight: 110,
   },
   inputError: {
     borderColor: Colors.danger,
