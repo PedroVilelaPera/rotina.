@@ -27,6 +27,7 @@ export function RoutineHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Criar nova tarefa ou hábito"
+          android_ripple={{ color: Colors.backgroundSelected, borderless: true }}
           style={({ pressed }) => [
             styles.addButton,
             pressed && styles.addButtonPressed,
@@ -38,6 +39,7 @@ export function RoutineHeader({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Abrir perfil ou ajustes"
+          android_ripple={{ color: Colors.backgroundSelected, borderless: true }}
           style={({ pressed }) => [
             styles.profileButton,
             pressed && styles.profileButtonPressed,

@@ -79,26 +79,38 @@ export function useRoutineDaily(options?: UseRoutineDailyOptions) {
     };
   }, [repository, userId, todayDate]);
 
-  // Pull-to-refresh
-  const refresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      const [items, completions] = await Promise.all([
-        repository.listItems(userId, { onlyActive: true }),
-        repository.listCompletionsForDate(userId, todayDate),
-      ]);
-      const refreshedSet = new Set(completions.map((c) => c.itemId));
-      setAllItems(items);
-      completedIdsRef.current = refreshedSet;
-      setCompletedIds(refreshedSet);
-      setErrorMessage(null);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Falha ao atualizar rotina.';
-      setErrorMessage(msg);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [repository, userId, todayDate]);
+  // Atualização de dados (suporta modo silencioso sem piscar o indicador do RefreshControl em trocas de tela)
+  const refresh = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const isSilent = options?.silent ?? false;
+      if (!isSilent) {
+        setIsRefreshing(true);
+      }
+      try {
+        const [items, completions] = await Promise.all([
+          repository.listItems(userId, { onlyActive: true }),
+          repository.listCompletionsForDate(userId, todayDate),
+        ]);
+        const refreshedSet = new Set(completions.map((c) => c.itemId));
+        setAllItems(items);
+        completedIdsRef.current = refreshedSet;
+        setCompletedIds(refreshedSet);
+        setErrorMessage(null);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Falha ao atualizar rotina.';
+        setErrorMessage(msg);
+      } finally {
+        if (!isSilent) {
+          setIsRefreshing(false);
+        }
+      }
+    },
+    [repository, userId, todayDate]
+  );
+
+  const silentRefresh = useCallback(async () => {
+    await refresh({ silent: true });
+  }, [refresh]);
 
   // Itens unificados do dia (hábitos de hoje + tarefas com targetDate de hoje)
   const dailyItems = useMemo(() => {
@@ -166,5 +178,6 @@ export function useRoutineDaily(options?: UseRoutineDailyOptions) {
     greeting,
     toggleItem,
     refresh,
+    silentRefresh,
   };
 }

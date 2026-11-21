@@ -6,6 +6,13 @@
     "orientation": "portrait",
     "scheme": "rotina",
     "userInterfaceStyle": "dark",
+    "backgroundColor": "#151312",
+    "android": {
+      "backgroundColor": "#151312"
+    },
+    "ios": {
+      "backgroundColor": "#151312"
+    },
     "web": {
       "output": "server"
     },

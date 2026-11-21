@@ -1,4 +1,5 @@
-import React from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -18,8 +19,10 @@ import {
 } from '../../components/routine';
 import { Colors } from '../../constants/theme';
 import { useRoutineDaily } from '../../hooks/use-routine-daily';
+import type { RoutineItem } from '../../types/routine';
 
 export default function RoutineScreen() {
+  const router = useRouter();
   const {
     dailyItems,
     completedIds,
@@ -31,18 +34,26 @@ export default function RoutineScreen() {
     greeting,
     toggleItem,
     refresh,
+    silentRefresh,
   } = useRoutineDaily();
 
+  // Atualização silenciosa em background ao retornar de modais (evita piscar o indicador do SwipeRefreshLayout)
+  useFocusEffect(
+    useCallback(() => {
+      void silentRefresh();
+    }, [silentRefresh])
+  );
+
   const handlePressAdd = () => {
-    // Será integrado à navegação modal da IF03 (Issue #15)
+    router.push('/item-form');
   };
 
   const handlePressProfile = () => {
     // Será integrado ao redirecionamento para Ajustes/IF06
   };
 
-  const handlePressDetails = () => {
-    // Será integrado à navegação para IF04 (Issue #16)
+  const handlePressDetails = (item: RoutineItem) => {
+    router.push({ pathname: '/item-form', params: { id: item.id } });
   };
 
   return (
@@ -62,6 +73,7 @@ export default function RoutineScreen() {
             onRefresh={refresh}
             tintColor={Colors.accent}
             colors={[Colors.accent]}
+            progressBackgroundColor={Colors.backgroundElement}
           />
         }>
         {/* Saudação e Data por Extenso [RF001] */}
