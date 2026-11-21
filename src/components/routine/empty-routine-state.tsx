@@ -23,6 +23,7 @@ export function EmptyRoutineState({ onPressCreate }: EmptyRoutineStateProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Criar o primeiro item para hoje"
+          android_ripple={{ color: Colors.backgroundSelected }}
           style={({ pressed }) => [
             styles.button,
             pressed && styles.buttonPressed,

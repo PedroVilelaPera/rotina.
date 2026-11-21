@@ -34,13 +34,14 @@ export default function RoutineScreen() {
     greeting,
     toggleItem,
     refresh,
+    silentRefresh,
   } = useRoutineDaily();
 
-  // Atualização automática ao retornar de modais de criação/edição [DoD Issue #15]
+  // Atualização silenciosa em background ao retornar de modais (evita piscar o indicador do SwipeRefreshLayout)
   useFocusEffect(
     useCallback(() => {
-      void refresh();
-    }, [refresh])
+      void silentRefresh();
+    }, [silentRefresh])
   );
 
   const handlePressAdd = () => {
@@ -72,6 +73,7 @@ export default function RoutineScreen() {
             onRefresh={refresh}
             tintColor={Colors.accent}
             colors={[Colors.accent]}
+            progressBackgroundColor={Colors.backgroundElement}
           />
         }>
         {/* Saudação e Data por Extenso [RF001] */}

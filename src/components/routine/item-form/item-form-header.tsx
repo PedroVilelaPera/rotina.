@@ -28,6 +28,7 @@ export function ItemFormHeader({
         accessibilityRole="button"
         accessibilityLabel="Fechar formulário"
         hitSlop={12}
+        android_ripple={{ color: Colors.backgroundSelected, borderless: true }}
         style={({ pressed }) => [
           styles.closeButton,
           pressed && styles.buttonPressed,
@@ -45,6 +46,7 @@ export function ItemFormHeader({
         accessibilityLabel="Salvar item"
         accessibilityState={{ disabled: isSubmitting }}
         disabled={isSubmitting}
+        android_ripple={{ color: Colors.backgroundSelected }}
         style={({ pressed }) => [
           styles.saveButton,
           pressed && !isSubmitting && styles.buttonPressed,

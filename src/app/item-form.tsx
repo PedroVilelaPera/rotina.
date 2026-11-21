@@ -115,12 +115,26 @@ export default function ItemFormScreen() {
                 </View>
               )}
 
-              {/* Seletor de Tipo (Tarefa do dia vs Hábito) [IF03] */}
-              <ItemTypeSelector
-                value={type}
-                onChange={setType}
-                disabled={isEditing}
-              />
+              {/* Modo de criação: seletor de tipo | Modo de edição: badge contextual explícito [IF03] */}
+              {isEditing ? (
+                <View
+                  style={styles.editingContextBadge}
+                  accessibilityRole="text"
+                  accessibilityLabel={`Editando ${type === 'habit' ? 'Hábito recorrente' : 'Tarefa do dia'}`}>
+                  <View style={styles.badgeIndicator} />
+                  <Text style={styles.editingContextText}>
+                    {type === 'habit' ? 'Hábito recorrente' : 'Tarefa do dia'}
+                  </Text>
+                  <Text style={styles.editingContextSub}>
+                    (Tipo fixo para histórico)
+                  </Text>
+                </View>
+              ) : (
+                <ItemTypeSelector
+                  value={type}
+                  onChange={setType}
+                />
+              )}
 
               {/* Campo Título (Obrigatório, 1-80 caracteres) [Gestao da Rotina.RF002, RF003] */}
               <View style={styles.section}>
@@ -349,6 +363,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.danger,
     fontWeight: '500',
+  },
+  editingContextBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.backgroundElement,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  badgeIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.accent,
+  },
+  editingContextText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.accent,
+  },
+  editingContextSub: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginLeft: 'auto',
   },
   section: {
     marginBottom: 20,

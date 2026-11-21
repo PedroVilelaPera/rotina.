@@ -1,3 +1,4 @@
+import { SymbolView } from 'expo-symbols';
 import React, { useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
 import ReanimatedSwipeable, {
@@ -85,15 +86,12 @@ export function RoutineItemCard({
         <SwipeAction isCompleted={isCompleted} side="right" progress={progress} />
       )}
       onSwipeableOpen={handleSwipeTrigger}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Item: ${item.title}. Status: ${isCompleted ? 'Concluído' : 'Pendente'}`}
-        style={({ pressed }) => [
+      <View
+        accessibilityRole="none"
+        style={[
           styles.card,
           isCompleted && styles.cardCompleted,
-          pressed && styles.cardPressed,
-        ]}
-        onPress={() => onPressDetails?.(item)}>
+        ]}>
         {/* Checkbox de 1 toque [Usabilidade.NF002, Gestao da Rotina.RF005] */}
         <Pressable
           hitSlop={12}
@@ -145,7 +143,30 @@ export function RoutineItemCard({
             )}
           </View>
         </View>
-      </Pressable>
+
+        {/* Botão de Engrenagem Dedicado para Edição (espelha dimensões e toque da checkbox) */}
+        <Pressable
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={`Editar ${item.title}`}
+          android_ripple={{ color: Colors.backgroundSelected, borderless: true }}
+          style={({ pressed }) => [
+            styles.editButton,
+            pressed && styles.editButtonPressed,
+          ]}
+          onPress={() => onPressDetails?.(item)}>
+          <SymbolView
+            name={{
+              ios: 'gearshape',
+              android: 'settings',
+              web: 'settings',
+            }}
+            size={18}
+            tintColor={Colors.textSecondary}
+            fallback={<Text style={styles.gearFallback}>⚙</Text>}
+          />
+        </Pressable>
+      </View>
     </ReanimatedSwipeable>
   );
 }
@@ -208,8 +229,22 @@ const styles = StyleSheet.create({
   cardCompleted: {
     opacity: 0.75,
   },
-  cardPressed: {
-    backgroundColor: Colors.backgroundSelected,
+  editButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 14,
+    backgroundColor: 'transparent',
+  },
+  editButtonPressed: {
+    transform: [{ scale: 0.92 }],
+    opacity: 0.6,
+  },
+  gearFallback: {
+    fontSize: 16,
+    color: Colors.textSecondary,
   },
   checkbox: {
     width: 26,
