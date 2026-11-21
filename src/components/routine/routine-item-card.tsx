@@ -1,5 +1,8 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef } from 'react';
+import { Platform, Pressable, StyleSheet, Text, Vibration, View } from 'react-native';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { Colors } from '../../constants/theme';
 import type { RoutineItem } from '../../types/routine';
@@ -17,72 +20,156 @@ export function RoutineItemCard({
   onToggle,
   onPressDetails,
 }: RoutineItemCardProps) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Item: ${item.title}. Status: ${isCompleted ? 'Concluído' : 'Pendente'}`}
-      style={({ pressed }) => [
-        styles.card,
-        isCompleted && styles.cardCompleted,
-        pressed && styles.cardPressed,
-      ]}
-      onPress={() => onPressDetails?.(item)}>
-      {/* Checkbox de 1 toque [Usabilidade.NF002, Gestao da Rotina.RF005] */}
-      <Pressable
-        hitSlop={12}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: isCompleted }}
-        accessibilityLabel={`Marcar ${item.title}`}
-        style={({ pressed }) => [
-          styles.checkbox,
-          isCompleted ? styles.checkboxChecked : styles.checkboxUnchecked,
-          pressed && styles.checkboxPressed,
-        ]}
-        onPress={() => onToggle(item)}>
-        {isCompleted && <Text style={styles.checkmarkIcon}>✓</Text>}
-      </Pressable>
+  const swipeableRef = useRef<SwipeableMethods | null>(null);
 
-      {/* Conteúdo Central */}
-      <View style={styles.content}>
-        <Text
-          numberOfLines={2}
-          style={[
-            styles.title,
-            isCompleted && styles.titleCompleted,
-          ]}>
-          {item.title}
+  const handleSwipeTrigger = () => {
+    // Fecha o painel de swipe imediatamente
+    swipeableRef.current?.close();
+
+    // Feedback tátil leve [IF02, Usabilidade.NF002]
+    if (Platform.OS !== 'web') {
+      try {
+        Vibration.vibrate(10);
+      } catch {
+        // Fallback silencioso se vibração não estiver disponível no dispositivo
+      }
+    }
+
+    // Alternância de conclusão sem pop-up bloqueante [NF002, RF005]
+    onToggle(item);
+  };
+
+  const renderSwipeAction = (side: 'left' | 'right') => {
+    return (
+      <View
+        style={[
+          styles.swipeAction,
+          side === 'left' ? styles.swipeActionLeft : styles.swipeActionRight,
+          isCompleted ? styles.swipeActionUndo : styles.swipeActionComplete,
+        ]}>
+        <Text style={styles.swipeActionIcon}>{isCompleted ? '↺' : '✓'}</Text>
+        <Text style={styles.swipeActionText}>
+          {isCompleted ? 'Desfazer' : 'Concluir'}
         </Text>
-
-        {/* Metadados / Badges */}
-        <View style={styles.metaRow}>
-          {item.scheduledTime && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{item.scheduledTime}</Text>
-            </View>
-          )}
-
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.durationMinutes}m</Text>
-          </View>
-
-          <View style={styles.badgeMuted}>
-            <Text style={styles.badgeMutedText}>
-              {item.type === 'habit' ? 'Hábito' : 'Tarefa'}
-            </Text>
-          </View>
-
-          {item.category && (
-            <View style={styles.badgeCategory}>
-              <Text style={styles.badgeCategoryText}>{item.category}</Text>
-            </View>
-          )}
-        </View>
       </View>
-    </Pressable>
+    );
+  };
+
+  return (
+    <ReanimatedSwipeable
+      ref={swipeableRef}
+      containerStyle={styles.swipeableContainer}
+      friction={2}
+      leftThreshold={40}
+      rightThreshold={40}
+      overshootLeft={false}
+      overshootRight={false}
+      renderLeftActions={() => renderSwipeAction('left')}
+      renderRightActions={() => renderSwipeAction('right')}
+      onSwipeableOpen={handleSwipeTrigger}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Item: ${item.title}. Status: ${isCompleted ? 'Concluído' : 'Pendente'}`}
+        style={({ pressed }) => [
+          styles.card,
+          isCompleted && styles.cardCompleted,
+          pressed && styles.cardPressed,
+        ]}
+        onPress={() => onPressDetails?.(item)}>
+        {/* Checkbox de 1 toque [Usabilidade.NF002, Gestao da Rotina.RF005] */}
+        <Pressable
+          hitSlop={12}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: isCompleted }}
+          accessibilityLabel={`Marcar ${item.title}`}
+          style={({ pressed }) => [
+            styles.checkbox,
+            isCompleted ? styles.checkboxChecked : styles.checkboxUnchecked,
+            pressed && styles.checkboxPressed,
+          ]}
+          onPress={() => onToggle(item)}>
+          {isCompleted && <Text style={styles.checkmarkIcon}>✓</Text>}
+        </Pressable>
+
+        {/* Conteúdo Central */}
+        <View style={styles.content}>
+          <Text
+            numberOfLines={2}
+            style={[
+              styles.title,
+              isCompleted && styles.titleCompleted,
+            ]}>
+            {item.title}
+          </Text>
+
+          {/* Metadados / Badges */}
+          <View style={styles.metaRow}>
+            {item.scheduledTime && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{item.scheduledTime}</Text>
+              </View>
+            )}
+
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.durationMinutes}m</Text>
+            </View>
+
+            <View style={styles.badgeMuted}>
+              <Text style={styles.badgeMutedText}>
+                {item.type === 'habit' ? 'Hábito' : 'Tarefa'}
+              </Text>
+            </View>
+
+            {item.category && (
+              <View style={styles.badgeCategory}>
+                <Text style={styles.badgeCategoryText}>{item.category}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Pressable>
+    </ReanimatedSwipeable>
   );
 }
 
 const styles = StyleSheet.create({
+  swipeableContainer: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  swipeAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    borderRadius: 14,
+  },
+  swipeActionLeft: {
+    justifyContent: 'flex-start',
+  },
+  swipeActionRight: {
+    justifyContent: 'flex-end',
+  },
+  swipeActionComplete: {
+    backgroundColor: Colors.accent,
+  },
+  swipeActionUndo: {
+    backgroundColor: Colors.backgroundSelected,
+  },
+  swipeActionIcon: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+    marginRight: 6,
+  },
+  swipeActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+    letterSpacing: 0.3,
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -92,8 +179,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginHorizontal: 20,
-    marginBottom: 10,
   },
   cardCompleted: {
     opacity: 0.75,
@@ -189,3 +274,4 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
+
