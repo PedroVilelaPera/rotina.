@@ -1,39 +1,43 @@
 import { StyleSheet } from 'react-native';
 
+import { tokens } from '@/theme/tokens';
+
 export const styles = StyleSheet.create({
   small: {
+    fontFamily: tokens.fonts.medium,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '500',
   },
   smallBold: {
+    fontFamily: tokens.fonts.bold,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '700',
   },
   default: {
+    fontFamily: tokens.fonts.regular,
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: '500',
   },
   title: {
+    fontFamily: tokens.fonts.semiBold,
     fontSize: 48,
-    fontWeight: '600',
     lineHeight: 52,
   },
   subtitle: {
+    fontFamily: tokens.fonts.semiBold,
     fontSize: 32,
     lineHeight: 44,
-    fontWeight: '600',
   },
   link: {
+    fontFamily: tokens.fonts.medium,
     lineHeight: 30,
     fontSize: 14,
   },
   linkPrimary: {
+    fontFamily: tokens.fonts.medium,
     lineHeight: 30,
     fontSize: 14,
-    color: '#3c87f7',
+    color: tokens.colors.accent.primary,
   },
   code: {
     fontFamily: 'monospace',
