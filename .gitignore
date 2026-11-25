@@ -32,3 +32,6 @@ Thumbs.db
 
 expo-env.d.ts
 # @end expo-cli
+# Native generated builds
+/android/
+/ios/
