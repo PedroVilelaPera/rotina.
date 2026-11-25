@@ -9,6 +9,7 @@ import type { RoutineItem } from '../types/routine';
 export interface ReminderSyncHandler {
   scheduleHabitReminder: (habit: RoutineItem) => Promise<boolean>;
   cancelHabitReminder: (habitId: string) => Promise<boolean>;
+  cancelAllReminders?: () => Promise<boolean>;
 }
 
 /**
@@ -31,6 +32,7 @@ export function getReminderSyncHandler(): ReminderSyncHandler | null {
 export interface UseReminderSyncReturn {
   syncHabitReminder: (habit: RoutineItem) => Promise<boolean>;
   cancelHabitReminder: (habitId: string) => Promise<boolean>;
+  cancelAllReminders: () => Promise<boolean>;
 }
 
 /**
@@ -71,8 +73,20 @@ export function useReminderSync(): UseReminderSyncReturn {
     }
   }, []);
 
+  const cancelAllReminders = useCallback(async (): Promise<boolean> => {
+    try {
+      if (customReminderHandler?.cancelAllReminders) {
+        return await customReminderHandler.cancelAllReminders();
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   return {
     syncHabitReminder,
     cancelHabitReminder,
+    cancelAllReminders,
   };
 }

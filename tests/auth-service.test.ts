@@ -9,6 +9,7 @@ import {
   sendPasswordReset,
   signInAsGuest,
   signInWithEmail,
+  signOutUser,
   signUpWithEmail,
   type AuthSdkBindings,
 } from '../src/services/auth-service';
@@ -54,6 +55,9 @@ function createFakeAuthBindings() {
     },
     async sendPasswordReset(email) {
       calls.push(`reset:${email}`);
+    },
+    async signOut() {
+      calls.push('signOut');
     },
   };
   return { bindings, calls };
@@ -195,4 +199,30 @@ test('convertGuestAccountWithEmail vincula conta mantendo items e completions in
   assert.equal(itemsAfter.length, 1);
   assert.equal(itemsAfter[0].title, 'Ler 15 min');
   assert.equal(completionsAfter.length, 1);
+});
+
+test('signOutUser dispara cancelamento de notificações antes de encerrar sessão no Firebase Auth', async () => {
+  const { bindings, calls } = createFakeAuthBindings();
+
+  await signOutUser({
+    authBindings: bindings,
+    onBeforeSignOut: async () => {
+      calls.push('cancelReminders');
+    },
+  });
+
+  assert.deepEqual(calls, ['cancelReminders', 'signOut']);
+});
+
+test('signOutUser encerra sessão mesmo se o callback de notificações falhar', async () => {
+  const { bindings, calls } = createFakeAuthBindings();
+
+  await signOutUser({
+    authBindings: bindings,
+    onBeforeSignOut: async () => {
+      throw new Error('falha em notificações');
+    },
+  });
+
+  assert.deepEqual(calls, ['signOut']);
 });
