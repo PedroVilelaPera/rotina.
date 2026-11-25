@@ -15,6 +15,7 @@ import { Button, Input, type InputRef } from '../components/ui';
 import { useAuth } from '../hooks/use-auth';
 import {
   sendPasswordReset,
+  signInAsGuest,
   signInWithEmail,
   signUpWithEmail,
 } from '../services/auth-service';
@@ -116,6 +117,30 @@ export default function LoginScreen() {
       setInfoMessage(
         'Se o e-mail estiver cadastrado, enviamos as instruções para redefinir sua senha.',
       );
+    } catch (err) {
+      setFormError(mapFirebaseAuthError(err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGuestSignIn = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    clearFeedback();
+    setEmailError(null);
+    setPasswordError(null);
+
+    if (!isFirebaseConfigured) {
+      setFormError('Firebase não configurado. Preencha o arquivo .env para entrar em modo visitante.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await signInAsGuest();
     } catch (err) {
       setFormError(mapFirebaseAuthError(err));
     } finally {
@@ -244,6 +269,21 @@ export default function LoginScreen() {
                 </Text>
               </Text>
             </Pressable>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerLabel}>ou</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <Button
+              label="Entrar sem cadastro (modo visitante)"
+              variant="secondary"
+              size="md"
+              onPress={handleGuestSignIn}
+              disabled={isSubmitting}
+              fullWidth
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -349,5 +389,20 @@ const styles = StyleSheet.create({
   switchModeHighlight: {
     fontFamily: tokens.fonts.semiBold,
     color: tokens.colors.accent.primary,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: tokens.colors.border.subtle,
+  },
+  dividerLabel: {
+    fontFamily: tokens.fonts.regular,
+    fontSize: 12,
+    color: tokens.colors.text.secondary,
   },
 });

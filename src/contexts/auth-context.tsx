@@ -1,5 +1,5 @@
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import React, { createContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getFirebaseServices } from '@/lib/firebase';
 import { FirebaseFirestoreAdapter } from '@/repositories/firebase-firestore-adapter';
@@ -12,9 +12,11 @@ import {
 export interface AuthContextValue {
   user: User | null;
   userId: string | null;
+  email: string | null;
   isAnonymous: boolean;
   loading: boolean;
   isFirebaseConfigured: boolean;
+  refreshAuthUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -23,11 +25,21 @@ export interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+interface AuthSnapshot {
+  user: User | null;
+  email: string | null;
+  isAnonymous: boolean;
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const services = getFirebaseServices();
   const isConfigured = services !== null;
 
-  const [user, setUser] = useState<User | null>(null);
+  const [snapshot, setSnapshot] = useState<AuthSnapshot>({
+    user: null,
+    email: null,
+    isAnonymous: false,
+  });
   const [loading, setLoading] = useState<boolean>(isConfigured);
 
   useEffect(() => {
@@ -44,7 +56,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         resetRoutineRepositoryToInMemory();
       }
 
-      setUser(nextUser);
+      setSnapshot({
+        user: nextUser,
+        email: nextUser?.email ?? null,
+        isAnonymous: nextUser?.isAnonymous ?? false,
+      });
       setLoading(false);
     });
 
@@ -53,15 +69,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [services]);
 
+  const refreshAuthUser = useCallback(async () => {
+    if (!services) {
+      return;
+    }
+
+    const currentUser = services.auth.currentUser;
+    if (currentUser) {
+      await currentUser.reload();
+    }
+
+    setSnapshot({
+      user: currentUser,
+      email: currentUser?.email ?? null,
+      isAnonymous: currentUser?.isAnonymous ?? false,
+    });
+  }, [services]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
-      user,
-      userId: user?.uid ?? null,
-      isAnonymous: user?.isAnonymous ?? false,
+      user: snapshot.user,
+      userId: snapshot.user?.uid ?? null,
+      email: snapshot.email,
+      isAnonymous: snapshot.isAnonymous,
       loading,
       isFirebaseConfigured: isConfigured,
+      refreshAuthUser,
     }),
-    [user, loading, isConfigured],
+    [snapshot, loading, isConfigured, refreshAuthUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

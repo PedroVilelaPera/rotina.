@@ -1,6 +1,9 @@
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  linkWithCredential,
   sendPasswordResetEmail,
+  signInAnonymously as firebaseSignInAnonymously,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 
@@ -31,6 +34,8 @@ export interface UserProfileDocument {
 export interface AuthSdkBindings {
   signInWithEmail(email: string, password: string): Promise<AuthUserSummary>;
   signUpWithEmail(email: string, password: string): Promise<AuthUserSummary>;
+  signInAnonymously(): Promise<AuthUserSummary>;
+  linkEmailPassword(email: string, password: string): Promise<AuthUserSummary>;
   sendPasswordReset(email: string): Promise<void>;
 }
 
@@ -77,6 +82,29 @@ async function requireFirebaseBindings(): Promise<{
           isAnonymous: credential.user.isAnonymous,
         };
       },
+      async signInAnonymously() {
+        const credential = await firebaseSignInAnonymously(services.auth);
+        return {
+          uid: credential.user.uid,
+          email: credential.user.email,
+          displayName: credential.user.displayName,
+          isAnonymous: credential.user.isAnonymous,
+        };
+      },
+      async linkEmailPassword(email, password) {
+        const currentUser = services.auth.currentUser;
+        if (!currentUser) {
+          throw new Error('Nenhuma sessão ativa encontrada para vincular a conta.');
+        }
+        const credential = EmailAuthProvider.credential(email, password);
+        const result = await linkWithCredential(currentUser, credential);
+        return {
+          uid: result.user.uid,
+          email: result.user.email ?? email,
+          displayName: result.user.displayName,
+          isAnonymous: result.user.isAnonymous,
+        };
+      },
       async sendPasswordReset(email) {
         await sendPasswordResetEmail(services.auth, email);
       },
@@ -89,6 +117,9 @@ function resolveDisplayName(user: AuthUserSummary): string {
   const explicitName = user.displayName?.trim();
   if (explicitName) {
     return explicitName;
+  }
+  if (user.isAnonymous) {
+    return 'Visitante';
   }
   const emailPrefix = user.email?.split('@')[0]?.trim();
   return emailPrefix || 'Usuário';
@@ -158,4 +189,51 @@ export async function sendPasswordReset(
   const normalizedEmail = normalizeEmail(rawEmail);
   const authBindings = options?.authBindings ?? (await requireFirebaseBindings()).authBindings;
   await authBindings.sendPasswordReset(normalizedEmail);
+}
+
+export async function signInAsGuest(
+  options?: AuthServiceOptions,
+): Promise<AuthUserSummary> {
+  const defaults = options?.authBindings && options?.adapter ? null : await requireFirebaseBindings();
+  const authBindings = options?.authBindings ?? defaults!.authBindings;
+  const adapter = options?.adapter ?? defaults!.adapter;
+
+  const user = await authBindings.signInAnonymously();
+  await ensureUserProfileDocument(adapter, user);
+  return user;
+}
+
+export async function convertGuestAccountWithEmail(
+  rawEmail: string,
+  password: string,
+  options?: AuthServiceOptions,
+): Promise<AuthUserSummary> {
+  const normalizedEmail = normalizeEmail(rawEmail);
+  const defaults = options?.authBindings && options?.adapter ? null : await requireFirebaseBindings();
+  const authBindings = options?.authBindings ?? defaults!.authBindings;
+  const adapter = options?.adapter ?? defaults!.adapter;
+
+  const convertedUser = await authBindings.linkEmailPassword(normalizedEmail, password);
+  const docPath = `users/${convertedUser.uid}`;
+  const snapshot = await adapter.getDoc(docPath);
+
+  if (snapshot.exists()) {
+    await adapter.updateDoc(docPath, {
+      email: convertedUser.email ?? normalizedEmail,
+      displayName: resolveDisplayName({
+        ...convertedUser,
+        email: convertedUser.email ?? normalizedEmail,
+        isAnonymous: false,
+      }),
+      isAnonymous: false,
+    });
+  } else {
+    await ensureUserProfileDocument(adapter, {
+      ...convertedUser,
+      email: convertedUser.email ?? normalizedEmail,
+      isAnonymous: false,
+    });
+  }
+
+  return convertedUser;
 }
