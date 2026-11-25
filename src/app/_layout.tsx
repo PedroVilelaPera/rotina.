@@ -13,6 +13,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Colors } from '../constants/theme';
+import { AuthProvider } from '../contexts/auth-context';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -59,36 +60,38 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <ThemeProvider value={appDarkTheme}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: Colors.background },
-            animation: 'slide_from_bottom',
-          }}>
-          <Stack.Screen
-            name="(tabs)"
-            options={{
+      <AuthProvider>
+        <ThemeProvider value={appDarkTheme}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
               contentStyle: { backgroundColor: Colors.background },
-            }}
-          />
-          <Stack.Screen
-            name="item-form"
-            options={{
-              presentation: 'modal',
               animation: 'slide_from_bottom',
-              contentStyle: { backgroundColor: Colors.background },
-            }}
-          />
-          <Stack.Screen
-            name="item-details"
-            options={{
-              animation: 'slide_from_right',
-              contentStyle: { backgroundColor: Colors.background },
-            }}
-          />
-        </Stack>
-      </ThemeProvider>
+            }}>
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                contentStyle: { backgroundColor: Colors.background },
+              }}
+            />
+            <Stack.Screen
+              name="item-form"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                contentStyle: { backgroundColor: Colors.background },
+              }}
+            />
+            <Stack.Screen
+              name="item-details"
+              options={{
+                animation: 'slide_from_right',
+                contentStyle: { backgroundColor: Colors.background },
+              }}
+            />
+          </Stack>
+        </ThemeProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }
