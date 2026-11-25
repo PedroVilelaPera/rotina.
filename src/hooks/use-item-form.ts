@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { getRoutineRepository } from '../services/routine-service';
+import { useOptionalAuth } from './use-auth';
 import type {
   DayOfWeek,
   DurationMinutes,
@@ -60,7 +61,8 @@ export interface UseItemFormReturn {
 }
 
 export function useItemForm(options?: UseItemFormOptions): UseItemFormReturn {
-  const userId = options?.userId ?? 'current-user';
+  const auth = useOptionalAuth();
+  const userId = options?.userId ?? auth?.userId ?? 'current-user';
   const itemId = options?.itemId;
   const initialType = options?.initialType ?? 'task';
   const repository = options?.repository ?? getRoutineRepository();

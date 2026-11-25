@@ -5,7 +5,7 @@ import {
   PlusJakartaSans_700Bold,
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans';
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, type Href, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import React, { useEffect } from 'react';
@@ -14,6 +14,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Colors } from '../constants/theme';
 import { AuthProvider } from '../contexts/auth-context';
+import { useAuth } from '../hooks/use-auth';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -34,6 +35,63 @@ const appDarkTheme = {
     notification: Colors.accent,
   },
 };
+
+function RootNavigator() {
+  const { user, loading, isFirebaseConfigured } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || loading) {
+      return;
+    }
+
+    const inLoginRoute = (segments[0] as string) === 'login';
+    if (!user && !inLoginRoute) {
+      router.replace('/login' as Href);
+    } else if (user && inLoginRoute) {
+      router.replace('/(tabs)');
+    }
+  }, [isFirebaseConfigured, loading, user, segments, router]);
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.background },
+        animation: 'slide_from_bottom',
+      }}>
+      <Stack.Screen
+        name="(tabs)"
+        options={{
+          contentStyle: { backgroundColor: Colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="login"
+        options={{
+          animation: 'fade',
+          contentStyle: { backgroundColor: Colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="item-form"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: Colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="item-details"
+        options={{
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: Colors.background },
+        }}
+      />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -62,34 +120,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <AuthProvider>
         <ThemeProvider value={appDarkTheme}>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: Colors.background },
-              animation: 'slide_from_bottom',
-            }}>
-            <Stack.Screen
-              name="(tabs)"
-              options={{
-                contentStyle: { backgroundColor: Colors.background },
-              }}
-            />
-            <Stack.Screen
-              name="item-form"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                contentStyle: { backgroundColor: Colors.background },
-              }}
-            />
-            <Stack.Screen
-              name="item-details"
-              options={{
-                animation: 'slide_from_right',
-                contentStyle: { backgroundColor: Colors.background },
-              }}
-            />
-          </Stack>
+          <RootNavigator />
         </ThemeProvider>
       </AuthProvider>
     </GestureHandlerRootView>

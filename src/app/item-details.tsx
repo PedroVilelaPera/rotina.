@@ -20,6 +20,7 @@ import {
   TimeStepperCard,
 } from '../components/routine';
 import { Colors } from '../constants/theme';
+import { useAuth } from '../hooks/use-auth';
 import { useReminderSync } from '../hooks/use-reminder-sync';
 import { getRoutineRepository } from '../services/routine-service';
 import type {
@@ -39,7 +40,8 @@ export default function ItemDetailsScreen() {
   const itemId = typeof params.id === 'string' ? params.id : undefined;
 
   const repository = getRoutineRepository();
-  const userId = 'current-user';
+  const { userId: authUserId } = useAuth();
+  const userId = authUserId ?? 'current-user';
   const todayDate = getTodayLocalDateString();
   const { syncHabitReminder, cancelHabitReminder } = useReminderSync();
 
