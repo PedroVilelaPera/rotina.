@@ -5,6 +5,7 @@ import {
   sendPasswordResetEmail,
   signInAnonymously as firebaseSignInAnonymously,
   signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
 } from 'firebase/auth';
 
 import type { FirestoreAdapter } from '../repositories/routine-repository';
@@ -37,6 +38,7 @@ export interface AuthSdkBindings {
   signInAnonymously(): Promise<AuthUserSummary>;
   linkEmailPassword(email: string, password: string): Promise<AuthUserSummary>;
   sendPasswordReset(email: string): Promise<void>;
+  signOut(): Promise<void>;
 }
 
 export interface AuthServiceOptions {
@@ -107,6 +109,9 @@ async function requireFirebaseBindings(): Promise<{
       },
       async sendPasswordReset(email) {
         await sendPasswordResetEmail(services.auth, email);
+      },
+      async signOut() {
+        await firebaseSignOut(services.auth);
       },
     },
     adapter: new FirebaseFirestoreAdapter(services.db),
@@ -236,4 +241,22 @@ export async function convertGuestAccountWithEmail(
   }
 
   return convertedUser;
+}
+
+export interface SignOutOptions {
+  authBindings?: Pick<AuthSdkBindings, 'signOut'>;
+  onBeforeSignOut?: () => Promise<void> | void;
+}
+
+export async function signOutUser(options?: SignOutOptions): Promise<void> {
+  if (options?.onBeforeSignOut) {
+    try {
+      await options.onBeforeSignOut();
+    } catch {
+      // Falha ao limpar notificações locais não deve impedir o encerramento da sessão
+    }
+  }
+
+  const authBindings = options?.authBindings ?? (await requireFirebaseBindings()).authBindings;
+  await authBindings.signOut();
 }
