@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Input } from '@/components/ui';
 import { useAuth } from '@/hooks/use-auth';
-import { convertGuestAccountWithEmail } from '@/services/auth-service';
+import { useReminderSync } from '@/hooks/use-reminder-sync';
+import { convertGuestAccountWithEmail, signOutUser } from '@/services/auth-service';
 import { tokens } from '@/theme/tokens';
 import { mapGuestConversionError, validateAuthForm } from '@/utils/auth-validation';
 
 export default function AjustesScreen() {
   const { user, email, isAnonymous, isFirebaseConfigured, refreshAuthUser } = useAuth();
+  const { cancelAllReminders } = useReminderSync();
 
   const [isLinkingOpen, setIsLinkingOpen] = useState(false);
   const [linkEmail, setLinkEmail] = useState('');
@@ -19,6 +21,8 @@ export default function AjustesScreen() {
   const [conversionError, setConversionError] = useState<string | null>(null);
   const [conversionSuccess, setConversionSuccess] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
 
   const handleLinkAccount = async () => {
     if (isConverting) {
@@ -49,6 +53,53 @@ export default function AjustesScreen() {
     } finally {
       setIsConverting(false);
     }
+  };
+
+  const executeSignOut = async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    setSignOutError(null);
+    setIsSigningOut(true);
+    try {
+      await signOutUser({
+        onBeforeSignOut: async () => {
+          await cancelAllReminders();
+        },
+      });
+    } catch {
+      setSignOutError('Não foi possível encerrar a sessão agora. Tente novamente.');
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  const handlePressSignOut = () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    if (isAnonymous) {
+      const title = 'Sair do modo visitante?';
+      const message =
+        'Seus dados de visitante podem ser perdidos se você sair sem vincular uma conta definitiva.';
+
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) {
+          void executeSignOut();
+        }
+        return;
+      }
+
+      Alert.alert(title, message, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Sair mesmo assim', style: 'destructive', onPress: () => void executeSignOut() },
+      ]);
+      return;
+    }
+
+    void executeSignOut();
   };
 
   return (
@@ -170,6 +221,35 @@ export default function AjustesScreen() {
             </Card>
           ) : null}
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>NOTIFICAÇÕES</Text>
+          <Card>
+            <Text style={styles.accountTitle}>Lembretes e follow-up</Text>
+            <Text style={styles.accountSubtitle}>
+              As preferências de lembretes locais e follow-up do dia seguinte serão exibidas aqui.
+            </Text>
+          </Card>
+        </View>
+
+        {user ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>SESSÃO</Text>
+            {signOutError ? (
+              <Text accessibilityRole="alert" style={styles.errorText}>
+                {signOutError}
+              </Text>
+            ) : null}
+            <Button
+              label="Sair"
+              variant="danger"
+              size="md"
+              onPress={handlePressSignOut}
+              loading={isSigningOut}
+              fullWidth
+            />
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
