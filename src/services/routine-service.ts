@@ -32,3 +32,14 @@ export function setRoutineRepository(repository: IRoutineRepository): void {
 export function getSharedInMemoryAdapter(): InMemoryFirestoreAdapter | null {
   return sharedAdapter;
 }
+
+/**
+ * Restaura o repositório compartilhado para o adaptador em memória (usado ao encerrar sessão ou sem Firebase configurado).
+ */
+export function resetRoutineRepositoryToInMemory(): IRoutineRepository {
+  if (!sharedAdapter) {
+    sharedAdapter = new InMemoryFirestoreAdapter();
+  }
+  sharedRepository = createRoutineRepository(sharedAdapter);
+  return sharedRepository;
+}
