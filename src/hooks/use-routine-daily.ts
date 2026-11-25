@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getRoutineRepository } from '../services/routine-service';
 import type { IRoutineRepository, RoutineItem } from '../types/routine';
+import { useOptionalAuth } from './use-auth';
 import {
   calculateDailyProgress,
   filterAndSortDailyItems,
@@ -19,7 +20,8 @@ export interface UseRoutineDailyOptions {
 }
 
 export function useRoutineDaily(options?: UseRoutineDailyOptions) {
-  const userId = options?.userId ?? 'current-user';
+  const auth = useOptionalAuth();
+  const userId = options?.userId ?? auth?.userId ?? 'current-user';
   const repository = options?.repository ?? getRoutineRepository();
   const referenceDate = options?.referenceDate;
   const userName = options?.userName;
