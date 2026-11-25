@@ -43,7 +43,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --experimental-strip-types --import ./scripts/test-loader.mjs --test tests/**/*.test.ts"
+    "test": "node --experimental-strip-types --import ./scripts/test-loader.mjs --test tests/**/*.test.ts",
+    "build:android:preview": "eas build --platform android --profile preview"
   },
   "private": true
 }

@@ -8,9 +8,11 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#151312",
     "android": {
+      "package": "com.rotina.app",
       "backgroundColor": "#151312"
     },
     "ios": {
+      "bundleIdentifier": "com.rotina.app",
       "backgroundColor": "#151312"
     },
     "web": {
