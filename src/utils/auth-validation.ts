@@ -69,3 +69,16 @@ export function mapFirebaseAuthError(error: unknown): string {
       return 'Não foi possível concluir a autenticação. Tente novamente.';
   }
 }
+
+export function mapGuestConversionError(error: unknown): string {
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code?: unknown }).code ?? '')
+      : '';
+
+  if (code === 'auth/email-already-in-use' || code === 'auth/credential-already-in-use') {
+    return 'Este e-mail já possui uma conta cadastrada. Se optar por entrar nela, os dados desta sessão visitante não serão mesclados automaticamente.';
+  }
+
+  return mapFirebaseAuthError(error);
+}

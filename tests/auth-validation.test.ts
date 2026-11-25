@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   mapFirebaseAuthError,
+  mapGuestConversionError,
   normalizeEmail,
   validateAuthForm,
   validateEmail,
@@ -49,4 +50,13 @@ test('mapFirebaseAuthError traduz códigos conhecidos para mensagens amigáveis 
   assert.match(mapFirebaseAuthError({ code: 'auth/network-request-failed' }), /conexão/i);
   assert.match(mapFirebaseAuthError({ code: 'auth/too-many-requests' }), /tentativas/i);
   assert.ok(mapFirebaseAuthError(new Error('erro desconhecido')).length > 0);
+});
+
+test('mapGuestConversionError orienta sobre não mesclagem quando o e-mail já possui conta', () => {
+  const alreadyInUse = mapGuestConversionError({ code: 'auth/email-already-in-use' });
+  assert.match(alreadyInUse, /já possui/i);
+  assert.match(alreadyInUse, /não serão mesclados/i);
+
+  const credentialInUse = mapGuestConversionError({ code: 'auth/credential-already-in-use' });
+  assert.match(credentialInUse, /já possui/i);
 });

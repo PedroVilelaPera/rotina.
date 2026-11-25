@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { InMemoryFirestoreAdapter } from '../src/repositories/routine-repository';
+import { createRoutineRepository, InMemoryFirestoreAdapter } from '../src/repositories/routine-repository';
 import {
   buildDefaultUserProfile,
+  convertGuestAccountWithEmail,
   ensureUserProfileDocument,
   sendPasswordReset,
+  signInAsGuest,
   signInWithEmail,
   signUpWithEmail,
   type AuthSdkBindings,
@@ -27,6 +29,24 @@ function createFakeAuthBindings() {
       calls.push(`signUp:${email}:${password}`);
       return {
         uid: 'uid-signup-1',
+        email,
+        displayName: null,
+        isAnonymous: false,
+      };
+    },
+    async signInAnonymously() {
+      calls.push('signInAnonymously');
+      return {
+        uid: 'uid-guest-1',
+        email: null,
+        displayName: null,
+        isAnonymous: true,
+      };
+    },
+    async linkEmailPassword(email, password) {
+      calls.push(`linkEmail:${email}:${password}`);
+      return {
+        uid: 'uid-guest-1',
         email,
         displayName: null,
         isAnonymous: false,
@@ -120,4 +140,59 @@ test('sendPasswordReset normaliza e-mail antes de chamar o Firebase Auth', async
   const { bindings, calls } = createFakeAuthBindings();
   await sendPasswordReset('  Alvaro@Rotina.App ', { authBindings: bindings });
   assert.deepEqual(calls, ['reset:alvaro@rotina.app']);
+});
+
+test('signInAsGuest cria sessão anônima e grava perfil users/{userId} com isAnonymous=true', async () => {
+  const adapter = new InMemoryFirestoreAdapter();
+  const { bindings, calls } = createFakeAuthBindings();
+
+  const guest = await signInAsGuest({ authBindings: bindings, adapter });
+  assert.equal(guest.uid, 'uid-guest-1');
+  assert.equal(guest.isAnonymous, true);
+  assert.deepEqual(calls, ['signInAnonymously']);
+
+  const snap = await adapter.getDoc('users/uid-guest-1');
+  assert.equal(snap.exists(), true);
+  assert.equal(snap.data()?.isAnonymous, true);
+  assert.equal(snap.data()?.email, null);
+  assert.equal(snap.data()?.displayName, 'Visitante');
+});
+
+test('convertGuestAccountWithEmail vincula conta mantendo items e completions intactos sob o mesmo uid', async () => {
+  const adapter = new InMemoryFirestoreAdapter();
+  const routineRepo = createRoutineRepository(adapter);
+  const { bindings, calls } = createFakeAuthBindings();
+
+  const guest = await signInAsGuest({ authBindings: bindings, adapter });
+  const habit = await routineRepo.createItem(guest.uid, {
+    type: 'habit',
+    title: 'Ler 15 min',
+    scheduledTime: '20:00',
+    recurrence: { kind: 'daily', daysOfWeek: [] },
+  });
+  await routineRepo.toggleCompletion(
+    guest.uid,
+    { id: habit.id, type: 'habit', scheduledTime: '20:00' },
+    '2026-11-25',
+  );
+
+  const converted = await convertGuestAccountWithEmail('  Alvaro@Rotina.App ', '123456', {
+    authBindings: bindings,
+    adapter,
+  });
+
+  assert.equal(converted.uid, 'uid-guest-1');
+  assert.equal(converted.isAnonymous, false);
+  assert.equal(converted.email, 'alvaro@rotina.app');
+  assert.deepEqual(calls, ['signInAnonymously', 'linkEmail:alvaro@rotina.app:123456']);
+
+  const profileSnap = await adapter.getDoc('users/uid-guest-1');
+  assert.equal(profileSnap.data()?.isAnonymous, false);
+  assert.equal(profileSnap.data()?.email, 'alvaro@rotina.app');
+
+  const itemsAfter = await routineRepo.listItems('uid-guest-1');
+  const completionsAfter = await routineRepo.listCompletionsForDate('uid-guest-1', '2026-11-25');
+  assert.equal(itemsAfter.length, 1);
+  assert.equal(itemsAfter[0].title, 'Ler 15 min');
+  assert.equal(completionsAfter.length, 1);
 });
