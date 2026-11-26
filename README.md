@@ -93,7 +93,9 @@ src/
 ### Pré-requisitos
 - [Node.js](https://nodejs.org/) versão 18 ou superior.
 - Gerenciador de pacotes `npm`.
-- Dispositivo móvel com o aplicativo **Expo Go** instalado (Android ou iOS) ou emulador local configurado.
+- Para execução em dispositivo móvel/emulador:
+  - Ambiente Android Studio / SDK configurado (para compilação local via Dev Client), **ou**
+  - O binário de desenvolvimento (`.apk` Dev Client) instalado no aparelho físico / emulador via EAS Build.
 
 ### 1. Clonar o repositório
 ```bash
@@ -106,19 +108,30 @@ cd rotina
 npm install
 ```
 
-### 3. Iniciar o servidor de desenvolvimento
+### 3. Execução em Desenvolvimento (Expo Dev Client)
+
+Como o projeto utiliza recursos nativos de notificações (`expo-notifications`) com canais personalizados no Android, a execução utiliza o **Expo Dev Client**:
+
+#### Opção A: Compilação nativa direta no emulador ou dispositivo conectado via USB
+```bash
+# Compilar e abrir diretamente no Android
+npm run android
+
+# Compilar e abrir no simulador iOS (requer macOS)
+npm run ios
+```
+
+#### Opção B: Iniciar apenas o Metro Bundler (com a Dev Build já instalada no aparelho)
 ```bash
 npm start
 ```
-
-Ao iniciar, o terminal exibirá um QR Code.
-- No **Android:** Abra o aplicativo **Expo Go** e leia o QR Code.
-- No **iOS:** Abra o aplicativo nativo de **Câmera** e toque na notificação para abrir no Expo Go.
+Ao iniciar o Metro, escaneie o QR Code usando a câmera do seu dispositivo com a Dev Build instalada (ou pressione `a` para abrir no emulador Android).
 
 ### Comandos de Atalho
-- Iniciar no emulador Android: `npm run android`
-- Iniciar no simulador iOS: `npm run ios`
+- Iniciar servidor de desenvolvimento: `npm start`
+- Compilar e rodar no Android: `npm run android`
 - Iniciar versão Web: `npm run web`
+- Gerar build preview do APK Android: `npm run build:android:preview`
 
 ---
 
