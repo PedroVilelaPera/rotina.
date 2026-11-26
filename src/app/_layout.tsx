@@ -6,6 +6,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { DarkTheme, type Href, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import React, { useEffect } from 'react';
@@ -15,6 +16,19 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '../constants/theme';
 import { AuthProvider } from '../contexts/auth-context';
 import { useAuth } from '../hooks/use-auth';
+import { setReminderSyncHandler } from '../hooks/use-reminder-sync';
+import { configureNotifications } from '../services/notifications/configure';
+import {
+  cancelAllReminders,
+  cancelHabitReminder,
+  scheduleHabitReminder,
+} from '../services/notifications/schedule-habit-reminder';
+
+setReminderSyncHandler({
+  scheduleHabitReminder,
+  cancelHabitReminder,
+  cancelAllReminders,
+});
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -53,6 +67,33 @@ function RootNavigator() {
       router.replace('/(tabs)');
     }
   }, [isFirebaseConfigured, loading, user, segments, router]);
+
+  useEffect(() => {
+    void configureNotifications();
+
+    function openNotificationTarget(response: Notifications.NotificationResponse) {
+      const itemId = response.notification.request.content.data?.itemId;
+
+      if (typeof itemId === 'string') {
+        router.push({
+          pathname: '/item-details',
+          params: { id: itemId },
+        });
+      } else {
+        router.push('/');
+      }
+
+      void Notifications.clearLastNotificationResponseAsync();
+    }
+
+    const lastResponse = Notifications.getLastNotificationResponse();
+    if (lastResponse) {
+      openNotificationTarget(lastResponse);
+    }
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(openNotificationTarget);
+    return () => subscription.remove();
+  }, [router]);
 
   return (
     <Stack

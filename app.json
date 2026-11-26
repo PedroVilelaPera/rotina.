@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "rotina.",
+    "name": "rotina",
     "slug": "rotina",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,9 +18,7 @@
     "web": {
       "output": "server"
     },
-    "plugins": [
-      "expo-router"
-    ],
+    "plugins": ["expo-router", "expo-notifications"],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
