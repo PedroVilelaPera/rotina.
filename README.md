@@ -56,6 +56,52 @@ O **`rotina.`** é um aplicativo desenvolvido para quem busca manter a consistê
 
 ---
 
+## 🏗 Arquitetura do Sistema
+
+O aplicativo segue arquitetura em camadas desacoplada por contratos (`FirestoreAdapter` e `ReminderSyncHandler`), permitindo alternar de forma transparente entre persistência em nuvem (**Firebase JS SDK**) e fallback em memória para desenvolvimento/testes:
+
+```mermaid
+flowchart LR
+    subgraph UI["1. Interface (Expo Router)"]
+        direction TB
+        Root["RootLayout<br/>Guarda de Auth + Deep Link"]
+        Screens["IF01 Login · IF02 Rotina<br/>IF03/04 Modais · IF05/06 Abas"]
+        Root --> Screens
+    end
+
+    subgraph App["2. Hooks & Serviços"]
+        direction TB
+        Auth["AuthContext & auth-service<br/>Sessão, Perfil e Conversão"]
+        Hooks["useRoutineDaily & useItemForm<br/>Regras de Apresentação"]
+        NotifBridge["useReminderSync<br/>Ponte de Lembretes"]
+    end
+
+    subgraph Data["3. Persistência (Adapter Pattern)"]
+        direction TB
+        Repo["FirestoreRoutineRepository<br/>CRUD + Conclusões Idempotentes"]
+        FbAdapter["FirebaseFirestoreAdapter<br/>(Ativo com .env + sessão)"]
+        MemAdapter["InMemoryFirestoreAdapter<br/>(Fallback sem .env / testes)"]
+        Repo --> FbAdapter
+        Repo --> MemAdapter
+    end
+
+    subgraph Infra["4. BaaS & Sistema Operacional"]
+        direction TB
+        Firebase["Firebase Auth & Cloud Firestore<br/>users/{uid}/items & completions<br/>+ firestore.rules"]
+        OSNotif["expo-notifications (Dev Build)<br/>Canal habit-reminders"]
+    end
+
+    Screens --> Auth
+    Screens --> Hooks
+    Auth -->|"onAuthStateChanged"| Repo
+    Hooks --> Repo
+    Hooks --> NotifBridge
+    FbAdapter --> Firebase
+    NotifBridge --> OSNotif
+```
+
+---
+
 ## 📁 Estrutura do Projeto
 
 O repositório adota arquitetura modular com separação estrita de responsabilidades:
