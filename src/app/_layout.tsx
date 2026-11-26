@@ -10,7 +10,7 @@ import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import React, { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Colors } from '../constants/theme';
@@ -69,6 +69,10 @@ function RootNavigator() {
   }, [isFirebaseConfigured, loading, user, segments, router]);
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
     void configureNotifications();
 
     function openNotificationTarget(response: Notifications.NotificationResponse) {
