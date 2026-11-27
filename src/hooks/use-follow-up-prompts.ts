@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
-
+import { useAppAlert } from '@/contexts/alert-context';
 import { useAuth } from '@/hooks/use-auth';
 import { getRoutineRepository } from '@/services/routine-service';
 import { findPendingFollowUpHabits, getFollowUpTriggerDate, hasFollowUpTimeArrived } from '@/services/follow-up';
@@ -34,6 +33,7 @@ async function markHandled(userId: string, date: string, itemId: string): Promis
 
 export function useFollowUpPrompts(): void {
   const { userId } = useAuth();
+  const { showAlert } = useAppAlert();
 
   useFocusEffect(
     useCallback(() => {
@@ -97,14 +97,14 @@ export function useFollowUpPrompts(): void {
                 continueQueue();
               } catch {
                 actionChosen = false;
-                Alert.alert(
+                showAlert(
                   'Não foi possível registrar',
                   'A conclusão de ontem não foi salva. Você pode tentar novamente mais tarde.',
                 );
               }
             };
 
-            Alert.alert(
+            showAlert(
               'Follow-up da rotina',
               'Você conseguiu realizar ' + habit.title + ' ontem?',
               [
@@ -112,10 +112,7 @@ export function useFollowUpPrompts(): void {
                 { text: 'Não', onPress: () => void markAndContinue() },
                 { text: 'Agora não', style: 'cancel', onPress: () => void markAndContinue() },
               ],
-              {
-                cancelable: true,
-                onDismiss: () => void markAndContinue(),
-              },
+              () => void markAndContinue(),
             );
           };
 
@@ -133,6 +130,6 @@ export function useFollowUpPrompts(): void {
         isActive = false;
         if (timer) clearTimeout(timer);
       };
-    }, [userId]),
+    }, [userId, showAlert]),
   );
 }
