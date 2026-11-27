@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Colors } from '../constants/theme';
 import { AuthProvider } from '../contexts/auth-context';
+import { AlertProvider } from '../contexts/alert-context';
 import { useAuth } from '../hooks/use-auth';
 import { setReminderSyncHandler } from '../hooks/use-reminder-sync';
 import { configureNotifications } from '../services/notifications/configure';
@@ -165,7 +166,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <AuthProvider>
         <ThemeProvider value={appDarkTheme}>
-          <RootNavigator />
+          <AlertProvider>
+            <RootNavigator />
+          </AlertProvider>
         </ThemeProvider>
       </AuthProvider>
     </GestureHandlerRootView>

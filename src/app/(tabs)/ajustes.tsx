@@ -1,43 +1,66 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useState } from "react";
+import {
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Button, Card, Input } from '@/components/ui';
-import { useAuth } from '@/hooks/use-auth';
-import { useReminderSync } from '@/hooks/use-reminder-sync';
+import { Button, Card, Input } from "@/components/ui";
+import { useAppAlert } from "@/contexts/alert-context";
+import { useAuth } from "@/hooks/use-auth";
+import { useReminderSync } from "@/hooks/use-reminder-sync";
 import {
   convertGuestAccountWithEmail,
   getUserProfileSettings,
   signOutUser,
   updateUserProfileSettings,
-} from '@/services/auth-service';
+} from "@/services/auth-service";
 import {
   ensureNotificationPermission,
   getNotificationPermissionStatus,
   type NotificationPermissionStatus,
-} from '@/services/notifications/permissions';
-import { tokens } from '@/theme/tokens';
-import { mapGuestConversionError, validateAuthForm } from '@/utils/auth-validation';
-import { isValidTimeString } from '@/utils/routine-validation';
+} from "@/services/notifications/permissions";
+import { tokens } from "@/theme/tokens";
+import {
+  mapGuestConversionError,
+  validateAuthForm,
+} from "@/utils/auth-validation";
+import { isValidTimeString } from "@/utils/routine-validation";
 
 export default function AjustesScreen() {
-  const { user, userId, email, isAnonymous, isFirebaseConfigured, refreshAuthUser } = useAuth();
+  const {
+    user,
+    userId,
+    email,
+    isAnonymous,
+    isFirebaseConfigured,
+    refreshAuthUser,
+  } = useAuth();
+  const { showAlert } = useAppAlert();
   const { cancelAllReminders } = useReminderSync();
 
   const [isLinkingOpen, setIsLinkingOpen] = useState(false);
-  const [linkEmail, setLinkEmail] = useState('');
-  const [linkPassword, setLinkPassword] = useState('');
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkPassword, setLinkPassword] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [conversionError, setConversionError] = useState<string | null>(null);
-  const [conversionSuccess, setConversionSuccess] = useState<string | null>(null);
+  const [conversionSuccess, setConversionSuccess] = useState<string | null>(
+    null,
+  );
   const [isConverting, setIsConverting] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [followUpEnabled, setFollowUpEnabled] = useState(true);
-  const [followUpTime, setFollowUpTime] = useState('09:00');
-  const [timeDraft, setTimeDraft] = useState('09:00');
-  const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionStatus>('unavailable');
+  const [followUpTime, setFollowUpTime] = useState("09:00");
+  const [timeDraft, setTimeDraft] = useState("09:00");
+  const [permissionStatus, setPermissionStatus] =
+    useState<NotificationPermissionStatus>("unavailable");
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -57,13 +80,16 @@ export default function AjustesScreen() {
         const status = await getNotificationPermissionStatus();
         if (active) setPermissionStatus(status);
       } catch {
-        if (active) setSettingsError('Não foi possível carregar as preferências agora.');
+        if (active)
+          setSettingsError("Não foi possível carregar as preferências agora.");
       } finally {
         if (active) setSettingsLoading(false);
       }
     };
     void load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [userId]);
 
   const handleToggleFollowUp = async (enabled: boolean) => {
@@ -71,10 +97,12 @@ export default function AjustesScreen() {
     setSettingsSaving(true);
     setSettingsError(null);
     try {
-      const settings = await updateUserProfileSettings(userId, { nextDayFollowUpEnabled: enabled });
+      const settings = await updateUserProfileSettings(userId, {
+        nextDayFollowUpEnabled: enabled,
+      });
       setFollowUpEnabled(settings.nextDayFollowUpEnabled);
     } catch {
-      setSettingsError('Não foi possível salvar essa preferência.');
+      setSettingsError("Não foi possível salvar essa preferência.");
     } finally {
       setSettingsSaving(false);
     }
@@ -83,16 +111,20 @@ export default function AjustesScreen() {
   const handleSaveFollowUpTime = async () => {
     if (!userId || settingsSaving) return;
     if (!isValidTimeString(timeDraft)) {
-      setSettingsError('Informe um horário válido no formato HH:mm, por exemplo 09:00.');
+      setSettingsError(
+        "Informe um horário válido no formato HH:mm, por exemplo 09:00.",
+      );
       return;
     }
     setSettingsSaving(true);
     setSettingsError(null);
     try {
-      const settings = await updateUserProfileSettings(userId, { followUpTime: timeDraft });
+      const settings = await updateUserProfileSettings(userId, {
+        followUpTime: timeDraft,
+      });
       setFollowUpTime(settings.followUpTime);
     } catch {
-      setSettingsError('Não foi possível salvar o horário.');
+      setSettingsError("Não foi possível salvar o horário.");
     } finally {
       setSettingsSaving(false);
     }
@@ -101,8 +133,11 @@ export default function AjustesScreen() {
   const handleRequestNotificationPermission = async () => {
     const granted = await ensureNotificationPermission();
     setPermissionStatus(await getNotificationPermissionStatus());
-    if (!granted && Platform.OS !== 'web') {
-      Alert.alert('Permissão não ativada', 'Você pode ativar as notificações nas configurações do aparelho.');
+    if (!granted && Platform.OS !== "web") {
+      showAlert(
+        "Permissão não ativada",
+        "Você pode ativar as notificações nas configurações do aparelho.",
+      );
     }
   };
 
@@ -125,11 +160,16 @@ export default function AjustesScreen() {
 
     setIsConverting(true);
     try {
-      await convertGuestAccountWithEmail(validation.normalizedEmail, linkPassword);
+      await convertGuestAccountWithEmail(
+        validation.normalizedEmail,
+        linkPassword,
+      );
       await refreshAuthUser();
       setIsLinkingOpen(false);
-      setLinkPassword('');
-      setConversionSuccess('Conta vinculada com sucesso. Seus hábitos e tarefas foram preservados.');
+      setLinkPassword("");
+      setConversionSuccess(
+        "Conta vinculada com sucesso. Seus hábitos e tarefas foram preservados.",
+      );
     } catch (error) {
       setConversionError(mapGuestConversionError(error));
     } finally {
@@ -151,7 +191,9 @@ export default function AjustesScreen() {
         },
       });
     } catch {
-      setSignOutError('Não foi possível encerrar a sessão agora. Tente novamente.');
+      setSignOutError(
+        "Não foi possível encerrar a sessão agora. Tente novamente.",
+      );
     } finally {
       setIsSigningOut(false);
     }
@@ -163,20 +205,27 @@ export default function AjustesScreen() {
     }
 
     if (isAnonymous) {
-      const title = 'Sair do modo visitante?';
+      const title = "Sair do modo visitante?";
       const message =
-        'Seus dados de visitante podem ser perdidos se você sair sem vincular uma conta definitiva.';
+        "Seus dados de visitante podem ser perdidos se você sair sem vincular uma conta definitiva.";
 
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) {
+      if (Platform.OS === "web") {
+        if (
+          typeof window !== "undefined" &&
+          window.confirm(`${title}\n\n${message}`)
+        ) {
           void executeSignOut();
         }
         return;
       }
 
-      Alert.alert(title, message, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sair mesmo assim', style: 'destructive', onPress: () => void executeSignOut() },
+      showAlert(title, message, [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Sair mesmo assim",
+          style: "destructive",
+          onPress: () => void executeSignOut(),
+        },
       ]);
       return;
     }
@@ -185,11 +234,12 @@ export default function AjustesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.logo}>
             rotina<Text style={styles.logoDot}>.</Text>
@@ -204,7 +254,8 @@ export default function AjustesScreen() {
             <Card>
               <Text style={styles.accountTitle}>Modo local ativo</Text>
               <Text style={styles.accountSubtitle}>
-                Firebase não configurado (.env). Os dados estão sendo salvos em memória nesta sessão.
+                Firebase não configurado (.env). Os dados estão sendo salvos em
+                memória nesta sessão.
               </Text>
             </Card>
           ) : isAnonymous ? (
@@ -213,7 +264,8 @@ export default function AjustesScreen() {
                 Modo visitante — criar conta para salvar na nuvem
               </Text>
               <Text style={styles.accountSubtitle}>
-                Vincule um e-mail e senha para manter sua rotina e conquistas protegidas em qualquer aparelho.
+                Vincule um e-mail e senha para manter sua rotina e conquistas
+                protegidas em qualquer aparelho.
               </Text>
 
               {!isLinkingOpen ? (
@@ -292,8 +344,12 @@ export default function AjustesScreen() {
             </Card>
           ) : (
             <Card>
-              <Text style={styles.accountTitle}>{email ?? 'Conta conectada'}</Text>
-              <Text style={styles.accountSubtitle}>Conta sincronizada na nuvem</Text>
+              <Text style={styles.accountTitle}>
+                {email ?? "Conta conectada"}
+              </Text>
+              <Text style={styles.accountSubtitle}>
+                Conta sincronizada na nuvem
+              </Text>
             </Card>
           )}
 
@@ -309,8 +365,12 @@ export default function AjustesScreen() {
           <Card style={styles.notificationCard}>
             <View style={styles.settingRow}>
               <View style={styles.settingCopy}>
-                <Text style={styles.accountTitle}>Follow-up do dia seguinte</Text>
-                <Text style={styles.accountSubtitle}>Pergunta sobre hábitos de ontem que ainda não foram marcados.</Text>
+                <Text style={styles.accountTitle}>
+                  Follow-up do dia seguinte
+                </Text>
+                <Text style={styles.accountSubtitle}>
+                  Pergunta sobre hábitos de ontem que ainda não foram marcados.
+                </Text>
               </View>
               <Switch
                 accessibilityLabel="Ativar follow-up do dia seguinte"
@@ -323,25 +383,65 @@ export default function AjustesScreen() {
               label="Horário da pergunta"
               value={timeDraft}
               onChangeText={setTimeDraft}
-              editable={Boolean(userId) && followUpEnabled && !settingsLoading && !settingsSaving}
+              editable={
+                Boolean(userId) &&
+                followUpEnabled &&
+                !settingsLoading &&
+                !settingsSaving
+              }
               keyboardType="numbers-and-punctuation"
               maxLength={5}
               placeholder="09:00"
-              helperText={followUpEnabled ? `Salvo: ${followUpTime}` : 'Ative o follow-up para editar o horário.'}
+              helperText={
+                followUpEnabled
+                  ? `Salvo: ${followUpTime}`
+                  : "Ative o follow-up para editar o horário."
+              }
             />
             {timeDraft !== followUpTime && followUpEnabled ? (
-              <Button label="Salvar horário" size="md" onPress={() => void handleSaveFollowUpTime()} loading={settingsSaving} />
+              <Button
+                label="Salvar horário"
+                size="md"
+                onPress={() => void handleSaveFollowUpTime()}
+                loading={settingsSaving}
+              />
             ) : null}
-            {!userId ? <Text style={styles.accountSubtitle}>Entre em uma conta para salvar essas preferências.</Text> : null}
+            {!userId ? (
+              <Text style={styles.accountSubtitle}>
+                Entre em uma conta para salvar essas preferências.
+              </Text>
+            ) : null}
             <Text style={styles.accountSubtitle}>
-              Permissão do aparelho: {permissionStatus === 'granted' ? 'ativada' : permissionStatus === 'denied' ? 'negada' : permissionStatus === 'requestable' ? 'ainda não solicitada' : 'indisponível nesta plataforma'}.
+              Permissão do aparelho:{" "}
+              {permissionStatus === "granted"
+                ? "ativada"
+                : permissionStatus === "denied"
+                  ? "negada"
+                  : permissionStatus === "requestable"
+                    ? "ainda não solicitada"
+                    : "indisponível nesta plataforma"}
+              .
             </Text>
-            {permissionStatus === 'requestable' ? (
-              <Button label="Permitir notificações" variant="secondary" size="md" onPress={() => void handleRequestNotificationPermission()} />
-            ) : permissionStatus === 'denied' ? (
-              <Button label="Abrir configurações do aparelho" variant="secondary" size="md" onPress={() => void Linking.openSettings()} />
+            {permissionStatus === "requestable" ? (
+              <Button
+                label="Permitir notificações"
+                variant="secondary"
+                size="md"
+                onPress={() => void handleRequestNotificationPermission()}
+              />
+            ) : permissionStatus === "denied" ? (
+              <Button
+                label="Abrir configurações do aparelho"
+                variant="secondary"
+                size="md"
+                onPress={() => void Linking.openSettings()}
+              />
             ) : null}
-            {settingsError ? <Text accessibilityRole="alert" style={styles.errorText}>{settingsError}</Text> : null}
+            {settingsError ? (
+              <Text accessibilityRole="alert" style={styles.errorText}>
+                {settingsError}
+              </Text>
+            ) : null}
           </Card>
         </View>
 
@@ -415,8 +515,8 @@ const styles = StyleSheet.create({
     gap: tokens.spacing.md,
   },
   settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: tokens.spacing.md,
   },
   settingCopy: {
@@ -440,8 +540,8 @@ const styles = StyleSheet.create({
     marginTop: tokens.spacing.xs,
   },
   formActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: tokens.spacing.sm,
     marginTop: tokens.spacing.xs,
   },

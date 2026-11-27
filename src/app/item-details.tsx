@@ -2,7 +2,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,6 +20,7 @@ import {
 } from '../components/routine';
 import { Colors } from '../constants/theme';
 import { useAuth } from '../hooks/use-auth';
+import { useAppAlert } from '../contexts/alert-context';
 import { useReminderSync } from '../hooks/use-reminder-sync';
 import { getRoutineRepository } from '../services/routine-service';
 import type {
@@ -41,6 +41,7 @@ export default function ItemDetailsScreen() {
 
   const repository = getRoutineRepository();
   const { userId: authUserId } = useAuth();
+  const { showAlert } = useAppAlert();
   const userId = authUserId ?? 'current-user';
   const todayDate = getTodayLocalDateString();
   const { syncHabitReminder, cancelHabitReminder } = useReminderSync();
@@ -206,7 +207,7 @@ export default function ItemDetailsScreen() {
       // Rollback se falhar
       setIsCompletedToday(wasCompleted);
       const msg = err instanceof Error ? err.message : 'Falha ao alternar conclusão.';
-      Alert.alert('Erro', msg);
+      showAlert('Erro', msg);
     } finally {
       setIsToggling(false);
     }
@@ -238,7 +239,7 @@ export default function ItemDetailsScreen() {
       const msg = err instanceof Error ? err.message : 'Falha ao excluir item da rotina.';
       setErrorMessage(msg);
       setIsArchiving(false);
-      Alert.alert('Erro', msg);
+      showAlert('Erro', msg);
     }
   };
 
@@ -257,7 +258,7 @@ export default function ItemDetailsScreen() {
         void handleArchive();
       }
     } else {
-      Alert.alert(
+      showAlert(
         'Excluir da rotina',
         'Tem certeza de que deseja remover este item da sua rotina? Seu histórico de conquistas continuará salvo.',
         [
@@ -272,7 +273,7 @@ export default function ItemDetailsScreen() {
               void handleArchive();
             },
           },
-        ]
+        ],
       );
     }
   };
