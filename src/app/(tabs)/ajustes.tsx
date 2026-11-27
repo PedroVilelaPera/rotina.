@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Input } from '@/components/ui';
 import { useAuth } from '@/hooks/use-auth';
 import { useReminderSync } from '@/hooks/use-reminder-sync';
-import { convertGuestAccountWithEmail, signOutUser } from '@/services/auth-service';
+import {
+  convertGuestAccountWithEmail,
+  getUserProfileSettings,
+  signOutUser,
+  updateUserProfileSettings,
+} from '@/services/auth-service';
+import {
+  ensureNotificationPermission,
+  getNotificationPermissionStatus,
+  type NotificationPermissionStatus,
+} from '@/services/notifications/permissions';
 import { tokens } from '@/theme/tokens';
 import { mapGuestConversionError, validateAuthForm } from '@/utils/auth-validation';
+import { isValidTimeString } from '@/utils/routine-validation';
 
 export default function AjustesScreen() {
-  const { user, email, isAnonymous, isFirebaseConfigured, refreshAuthUser } = useAuth();
+  const { user, userId, email, isAnonymous, isFirebaseConfigured, refreshAuthUser } = useAuth();
   const { cancelAllReminders } = useReminderSync();
 
   const [isLinkingOpen, setIsLinkingOpen] = useState(false);
@@ -23,6 +34,77 @@ export default function AjustesScreen() {
   const [isConverting, setIsConverting] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [followUpEnabled, setFollowUpEnabled] = useState(true);
+  const [followUpTime, setFollowUpTime] = useState('09:00');
+  const [timeDraft, setTimeDraft] = useState('09:00');
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermissionStatus>('unavailable');
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        if (userId) {
+          const settings = await getUserProfileSettings(userId);
+          if (active) {
+            setFollowUpEnabled(settings.nextDayFollowUpEnabled);
+            setFollowUpTime(settings.followUpTime);
+            setTimeDraft(settings.followUpTime);
+          }
+        }
+        const status = await getNotificationPermissionStatus();
+        if (active) setPermissionStatus(status);
+      } catch {
+        if (active) setSettingsError('Não foi possível carregar as preferências agora.');
+      } finally {
+        if (active) setSettingsLoading(false);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [userId]);
+
+  const handleToggleFollowUp = async (enabled: boolean) => {
+    if (!userId || settingsSaving) return;
+    setSettingsSaving(true);
+    setSettingsError(null);
+    try {
+      const settings = await updateUserProfileSettings(userId, { nextDayFollowUpEnabled: enabled });
+      setFollowUpEnabled(settings.nextDayFollowUpEnabled);
+    } catch {
+      setSettingsError('Não foi possível salvar essa preferência.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleSaveFollowUpTime = async () => {
+    if (!userId || settingsSaving) return;
+    if (!isValidTimeString(timeDraft)) {
+      setSettingsError('Informe um horário válido no formato HH:mm, por exemplo 09:00.');
+      return;
+    }
+    setSettingsSaving(true);
+    setSettingsError(null);
+    try {
+      const settings = await updateUserProfileSettings(userId, { followUpTime: timeDraft });
+      setFollowUpTime(settings.followUpTime);
+    } catch {
+      setSettingsError('Não foi possível salvar o horário.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleRequestNotificationPermission = async () => {
+    const granted = await ensureNotificationPermission();
+    setPermissionStatus(await getNotificationPermissionStatus());
+    if (!granted && Platform.OS !== 'web') {
+      Alert.alert('Permissão não ativada', 'Você pode ativar as notificações nas configurações do aparelho.');
+    }
+  };
 
   const handleLinkAccount = async () => {
     if (isConverting) {
@@ -224,11 +306,42 @@ export default function AjustesScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>NOTIFICAÇÕES</Text>
-          <Card>
-            <Text style={styles.accountTitle}>Lembretes e follow-up</Text>
+          <Card style={styles.notificationCard}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingCopy}>
+                <Text style={styles.accountTitle}>Follow-up do dia seguinte</Text>
+                <Text style={styles.accountSubtitle}>Pergunta sobre hábitos de ontem que ainda não foram marcados.</Text>
+              </View>
+              <Switch
+                accessibilityLabel="Ativar follow-up do dia seguinte"
+                value={followUpEnabled}
+                onValueChange={(value) => void handleToggleFollowUp(value)}
+                disabled={!userId || settingsLoading || settingsSaving}
+              />
+            </View>
+            <Input
+              label="Horário da pergunta"
+              value={timeDraft}
+              onChangeText={setTimeDraft}
+              editable={Boolean(userId) && followUpEnabled && !settingsLoading && !settingsSaving}
+              keyboardType="numbers-and-punctuation"
+              maxLength={5}
+              placeholder="09:00"
+              helperText={followUpEnabled ? `Salvo: ${followUpTime}` : 'Ative o follow-up para editar o horário.'}
+            />
+            {timeDraft !== followUpTime && followUpEnabled ? (
+              <Button label="Salvar horário" size="md" onPress={() => void handleSaveFollowUpTime()} loading={settingsSaving} />
+            ) : null}
+            {!userId ? <Text style={styles.accountSubtitle}>Entre em uma conta para salvar essas preferências.</Text> : null}
             <Text style={styles.accountSubtitle}>
-              As preferências de lembretes locais e follow-up do dia seguinte serão exibidas aqui.
+              Permissão do aparelho: {permissionStatus === 'granted' ? 'ativada' : permissionStatus === 'denied' ? 'negada' : permissionStatus === 'requestable' ? 'ainda não solicitada' : 'indisponível nesta plataforma'}.
             </Text>
+            {permissionStatus === 'requestable' ? (
+              <Button label="Permitir notificações" variant="secondary" size="md" onPress={() => void handleRequestNotificationPermission()} />
+            ) : permissionStatus === 'denied' ? (
+              <Button label="Abrir configurações do aparelho" variant="secondary" size="md" onPress={() => void Linking.openSettings()} />
+            ) : null}
+            {settingsError ? <Text accessibilityRole="alert" style={styles.errorText}>{settingsError}</Text> : null}
           </Card>
         </View>
 
@@ -297,6 +410,17 @@ const styles = StyleSheet.create({
   },
   guestBanner: {
     gap: tokens.spacing.md,
+  },
+  notificationCard: {
+    gap: tokens.spacing.md,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.md,
+  },
+  settingCopy: {
+    flex: 1,
   },
   accountTitle: {
     fontFamily: tokens.fonts.semiBold,

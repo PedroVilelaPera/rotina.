@@ -1,6 +1,15 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+export type NotificationPermissionStatus = "granted" | "denied" | "requestable" | "unavailable";
+
+export async function getNotificationPermissionStatus(): Promise<NotificationPermissionStatus> {
+  if (Platform.OS === "web") return "unavailable";
+  const permission = await Notifications.getPermissionsAsync();
+  if (permission.granted) return "granted";
+  return permission.canAskAgain ? "requestable" : "denied";
+}
+
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (Platform.OS === "web") return false;
 

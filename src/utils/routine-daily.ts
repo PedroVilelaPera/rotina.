@@ -1,15 +1,34 @@
-import type { DayOfWeek, LocalDateString, LocalTimeString, RoutineItem } from '../types/routine';
-import { isValidTimeString } from './routine-validation';
+import type {
+  DayOfWeek,
+  LocalDateString,
+  LocalTimeString,
+  RoutineItem,
+} from "../types/routine";
+import { isValidTimeString } from "./routine-validation";
 
 /**
  * Retorna a data local atual no formato estrito YYYY-MM-DD [Padroes.NF001].
  * Utiliza as coordenadas locais do relógio do dispositivo para evitar discrepâncias UTC.
  */
-export function getTodayLocalDateString(referenceDate: Date = new Date()): LocalDateString {
+export function getTodayLocalDateString(
+  referenceDate: Date = new Date(),
+): LocalDateString {
   const year = referenceDate.getFullYear();
-  const month = String(referenceDate.getMonth() + 1).padStart(2, '0');
-  const day = String(referenceDate.getDate()).padStart(2, '0');
+  const month = String(referenceDate.getMonth() + 1).padStart(2, "0");
+  const day = String(referenceDate.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}` as LocalDateString;
+}
+
+export function getYesterdayLocalDateString(
+  referenceDate: Date = new Date(),
+): LocalDateString {
+  const yesterday = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate() - 1,
+  );
+
+  return getTodayLocalDateString(yesterday);
 }
 
 /**
@@ -24,10 +43,10 @@ export function getTodayDayOfWeek(referenceDate: Date = new Date()): DayOfWeek {
  */
 export function formatDateToExtenso(referenceDate: Date = new Date()): string {
   try {
-    const formatted = new Intl.DateTimeFormat('pt-BR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
+    const formatted = new Intl.DateTimeFormat("pt-BR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
     }).format(referenceDate);
 
     // Capitaliza a primeira letra (ex: "sexta-feira..." -> "Sexta-feira...")
@@ -35,27 +54,27 @@ export function formatDateToExtenso(referenceDate: Date = new Date()): string {
   } catch {
     // Fallback defensivo em caso de ausência de Intl no ambiente
     const days = [
-      'Domingo',
-      'Segunda-feira',
-      'Terça-feira',
-      'Quarta-feira',
-      'Quinta-feira',
-      'Sexta-feira',
-      'Sábado',
+      "Domingo",
+      "Segunda-feira",
+      "Terça-feira",
+      "Quarta-feira",
+      "Quinta-feira",
+      "Sexta-feira",
+      "Sábado",
     ];
     const months = [
-      'janeiro',
-      'fevereiro',
-      'março',
-      'abril',
-      'maio',
-      'junho',
-      'julho',
-      'agosto',
-      'setembro',
-      'outubro',
-      'novembro',
-      'dezembro',
+      "janeiro",
+      "fevereiro",
+      "março",
+      "abril",
+      "maio",
+      "junho",
+      "julho",
+      "agosto",
+      "setembro",
+      "outubro",
+      "novembro",
+      "dezembro",
     ];
     return `${days[referenceDate.getDay()]}, ${referenceDate.getDate()} de ${months[referenceDate.getMonth()]}`;
   }
@@ -66,21 +85,21 @@ export function formatDateToExtenso(referenceDate: Date = new Date()): string {
  */
 export function getGreeting(
   referenceDate: Date = new Date(),
-  userName?: string | null
+  userName?: string | null,
 ): string {
   const hour = referenceDate.getHours();
-  let baseGreeting = 'Bom dia';
+  let baseGreeting = "Bom dia";
 
   if (hour >= 12 && hour < 18) {
-    baseGreeting = 'Boa tarde';
+    baseGreeting = "Boa tarde";
   } else if (hour >= 18 || hour < 5) {
-    baseGreeting = 'Boa noite';
+    baseGreeting = "Boa noite";
   }
 
-  const cleanName = userName ? userName.trim() : '';
+  const cleanName = userName ? userName.trim() : "";
   if (cleanName) {
     // Primeiro nome do usuário para proximidade acolhedora
-    const firstName = cleanName.split(' ')[0];
+    const firstName = cleanName.split(" ")[0];
     return `${baseGreeting}, ${firstName}!`;
   }
 
@@ -93,26 +112,26 @@ export function getGreeting(
 export function isItemScheduledForDay(
   item: RoutineItem,
   targetDate: LocalDateString,
-  dayOfWeek: DayOfWeek
+  dayOfWeek: DayOfWeek,
 ): boolean {
   if (!item.isActive) {
     return false;
   }
 
-  if (item.type === 'habit') {
+  if (item.type === "habit") {
     if (!item.recurrence) {
       return false;
     }
-    if (item.recurrence.kind === 'daily') {
+    if (item.recurrence.kind === "daily") {
       return true;
     }
-    if (item.recurrence.kind === 'weekly') {
+    if (item.recurrence.kind === "weekly") {
       return item.recurrence.daysOfWeek.includes(dayOfWeek);
     }
     return false;
   }
 
-  if (item.type === 'task') {
+  if (item.type === "task") {
     return item.targetDate === targetDate;
   }
 
@@ -126,10 +145,10 @@ export function isItemScheduledForDay(
 export function filterAndSortDailyItems(
   items: RoutineItem[],
   targetDate: LocalDateString,
-  dayOfWeek: DayOfWeek
+  dayOfWeek: DayOfWeek,
 ): RoutineItem[] {
   const dailyItems = items.filter((item) =>
-    isItemScheduledForDay(item, targetDate, dayOfWeek)
+    isItemScheduledForDay(item, targetDate, dayOfWeek),
   );
 
   return dailyItems.sort((a, b) => {
@@ -161,7 +180,7 @@ export function filterAndSortDailyItems(
  */
 export function calculateDailyProgress(
   items: RoutineItem[],
-  completedItemIds: Set<string>
+  completedItemIds: Set<string>,
 ): {
   completedCount: number;
   totalCount: number;
@@ -197,13 +216,13 @@ export function calculateDailyProgress(
 }
 
 const DAY_ABBREVIATIONS: Record<DayOfWeek, string> = {
-  0: 'Dom',
-  1: 'Seg',
-  2: 'Ter',
-  3: 'Qua',
-  4: 'Qui',
-  5: 'Sex',
-  6: 'Sáb',
+  0: "Dom",
+  1: "Seg",
+  2: "Ter",
+  3: "Qua",
+  4: "Qui",
+  5: "Sex",
+  6: "Sáb",
 };
 
 /**
@@ -213,48 +232,48 @@ const DAY_ABBREVIATIONS: Record<DayOfWeek, string> = {
 export function adjustTimeBy15Minutes(
   currentTime: string | null | undefined,
   delta: 15 | -15,
-  fallbackTime: LocalTimeString = '08:00'
+  fallbackTime: LocalTimeString = "08:00",
 ): LocalTimeString {
   let totalMinutes: number;
 
   if (!currentTime || !isValidTimeString(currentTime)) {
-    const [fH, fM] = fallbackTime.split(':').map(Number);
+    const [fH, fM] = fallbackTime.split(":").map(Number);
     totalMinutes = fH * 60 + fM;
   } else {
-    const [h, m] = currentTime.split(':').map(Number);
+    const [h, m] = currentTime.split(":").map(Number);
     totalMinutes = h * 60 + m;
   }
 
-  const nextMinutes = ((totalMinutes + delta) % 1440 + 1440) % 1440;
+  const nextMinutes = (((totalMinutes + delta) % 1440) + 1440) % 1440;
   const nextH = Math.floor(nextMinutes / 60);
   const nextM = nextMinutes % 60;
 
-  return `${String(nextH).padStart(2, '0')}:${String(nextM).padStart(2, '0')}` as LocalTimeString;
+  return `${String(nextH).padStart(2, "0")}:${String(nextM).padStart(2, "0")}` as LocalTimeString;
 }
 
 /**
  * Formata o badge legível de recorrência para a interface de detalhes [IF04].
  */
 export function formatRecurrenceBadge(item: RoutineItem): string {
-  if (item.type === 'task') {
-    return 'Tarefa do dia';
+  if (item.type === "task") {
+    return "Tarefa do dia";
   }
 
   if (!item.recurrence) {
-    return 'Hábito';
+    return "Hábito";
   }
 
-  if (item.recurrence.kind === 'daily') {
-    return 'Diário';
+  if (item.recurrence.kind === "daily") {
+    return "Diário";
   }
 
   const days = item.recurrence.daysOfWeek;
   if (!days || days.length === 0) {
-    return 'Hábito semanal';
+    return "Hábito semanal";
   }
 
   if (days.length === 7) {
-    return 'Diário';
+    return "Diário";
   }
 
   const sortedDays = [...days].sort((a, b) => a - b);
@@ -268,13 +287,13 @@ export function formatRecurrenceBadge(item: RoutineItem): string {
     sortedDays[3] === 4 &&
     sortedDays[4] === 5
   ) {
-    return 'Seg a Sex';
+    return "Seg a Sex";
   }
 
   // Fim de semana [0, 6]
   if (sortedDays.length === 2 && sortedDays[0] === 0 && sortedDays[1] === 6) {
-    return 'Fim de semana';
+    return "Fim de semana";
   }
 
-  return sortedDays.map((d) => DAY_ABBREVIATIONS[d]).join(', ');
+  return sortedDays.map((d) => DAY_ABBREVIATIONS[d]).join(", ");
 }

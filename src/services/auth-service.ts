@@ -11,6 +11,7 @@ import {
 import type { FirestoreAdapter } from '../repositories/routine-repository';
 import type { FirestoreTimestampLike } from '../types/routine';
 import { normalizeEmail } from '../utils/auth-validation';
+import { isValidTimeString } from '../utils/routine-validation';
 
 export interface AuthUserSummary {
   uid: string;
@@ -141,6 +142,54 @@ export function buildDefaultUserProfile(
     createdAt,
     settings: { ...DEFAULT_USER_SETTINGS },
   };
+}
+
+function normalizeUserSettings(raw: unknown): UserProfileSettings {
+  const value = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return {
+    nextDayFollowUpEnabled:
+      typeof value.nextDayFollowUpEnabled === 'boolean'
+        ? value.nextDayFollowUpEnabled
+        : DEFAULT_USER_SETTINGS.nextDayFollowUpEnabled,
+    followUpTime: isValidTimeString(value.followUpTime)
+      ? value.followUpTime
+      : DEFAULT_USER_SETTINGS.followUpTime,
+  };
+}
+
+export async function getUserProfileSettings(
+  userId: string,
+  options?: Pick<AuthServiceOptions, 'adapter'>,
+): Promise<UserProfileSettings> {
+  const cleanUserId = userId.trim();
+  if (!cleanUserId) throw new Error('Identificador de usuário é obrigatório.');
+  const adapter = options?.adapter ?? (await requireFirebaseBindings()).adapter;
+  const snapshot = await adapter.getDoc(`users/${cleanUserId}`);
+  if (!snapshot.exists()) throw new Error('Perfil do usuário não encontrado.');
+  return normalizeUserSettings(snapshot.data()?.settings);
+}
+
+export async function updateUserProfileSettings(
+  userId: string,
+  updates: Partial<UserProfileSettings>,
+  options?: Pick<AuthServiceOptions, 'adapter'>,
+): Promise<UserProfileSettings> {
+  const cleanUserId = userId.trim();
+  if (!cleanUserId) throw new Error('Identificador de usuário é obrigatório.');
+  if (updates.nextDayFollowUpEnabled !== undefined && typeof updates.nextDayFollowUpEnabled !== 'boolean') {
+    throw new Error('A preferência de follow-up deve ser verdadeira ou falsa.');
+  }
+  if (updates.followUpTime !== undefined && !isValidTimeString(updates.followUpTime)) {
+    throw new Error('Horário inválido. Use o formato HH:mm.');
+  }
+
+  const adapter = options?.adapter ?? (await requireFirebaseBindings()).adapter;
+  const path = `users/${cleanUserId}`;
+  const snapshot = await adapter.getDoc(path);
+  if (!snapshot.exists()) throw new Error('Perfil do usuário não encontrado.');
+  const settings = { ...normalizeUserSettings(snapshot.data()?.settings), ...updates };
+  await adapter.updateDoc(path, { settings });
+  return settings;
 }
 
 export async function ensureUserProfileDocument(

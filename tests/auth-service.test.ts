@@ -6,11 +6,13 @@ import {
   buildDefaultUserProfile,
   convertGuestAccountWithEmail,
   ensureUserProfileDocument,
+  getUserProfileSettings,
   sendPasswordReset,
   signInAsGuest,
   signInWithEmail,
   signOutUser,
   signUpWithEmail,
+  updateUserProfileSettings,
   type AuthSdkBindings,
 } from '../src/services/auth-service';
 
@@ -82,6 +84,37 @@ test('buildDefaultUserProfile cria estrutura padrão com settings de follow-up �
     nextDayFollowUpEnabled: true,
     followUpTime: '09:00',
   });
+});
+
+test('preferências de follow-up são carregadas e persistidas no perfil do usuário', async () => {
+  const adapter = new InMemoryFirestoreAdapter();
+  await ensureUserProfileDocument(adapter, {
+    uid: 'settings-user', email: 'teste@rotina.app', displayName: 'Teste', isAnonymous: false,
+  });
+
+  assert.deepEqual(await getUserProfileSettings('settings-user', { adapter }), {
+    nextDayFollowUpEnabled: true,
+    followUpTime: '09:00',
+  });
+  const saved = await updateUserProfileSettings(
+    'settings-user',
+    { nextDayFollowUpEnabled: false, followUpTime: '10:30' },
+    { adapter },
+  );
+  assert.deepEqual(saved, { nextDayFollowUpEnabled: false, followUpTime: '10:30' });
+  assert.deepEqual(await getUserProfileSettings('settings-user', { adapter }), saved);
+});
+
+test('preferências rejeitam horários inválidos e não aceitam usuário vazio', async () => {
+  const adapter = new InMemoryFirestoreAdapter();
+  await ensureUserProfileDocument(adapter, {
+    uid: 'settings-user', email: null, displayName: null, isAnonymous: true,
+  });
+  await assert.rejects(
+    updateUserProfileSettings('settings-user', { followUpTime: '29:90' }, { adapter }),
+    /Horário inválido/,
+  );
+  await assert.rejects(getUserProfileSettings(' ', { adapter }), /Identificador de usuário/);
 });
 
 test('ensureUserProfileDocument cria users/{userId} no primeiro acesso e não sobrescreve perfil existente', async () => {
