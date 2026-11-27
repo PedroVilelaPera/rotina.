@@ -19,9 +19,11 @@ import {
 } from '../../components/routine';
 import { Colors } from '../../constants/theme';
 import { useRoutineDaily } from '../../hooks/use-routine-daily';
+import { useFollowUpPrompts } from '../../hooks/use-follow-up-prompts';
 import type { RoutineItem } from '../../types/routine';
 
 export default function RoutineScreen() {
+  useFollowUpPrompts();
   const router = useRouter();
   const {
     dailyItems,
